@@ -37,6 +37,62 @@ export function ChatArea({ conversationId }: { conversationId: string }) {
     });
   };
 
+  const MessageStatusIcon = ({
+    status,
+  }: {
+    status: "sent" | "delivered" | "read";
+  }) => {
+    if (status === "sent") {
+      return (
+        <svg
+          className="w-3 h-3 text-neutral-400"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M5 13l4 4L19 7"
+          />
+        </svg>
+      );
+    }
+    if (status === "delivered") {
+      return (
+        <svg
+          className="w-4 h-4 text-neutral-400"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M5 13l4 4L19 7M5 18l4 4L19 12"
+          />
+        </svg>
+      );
+    }
+    return (
+      <svg
+        className="w-4 h-4 text-blue-500"
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke="currentColor"
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={2}
+          d="M5 13l4 4L19 7M5 18l4 4L19 12"
+        />
+      </svg>
+    );
+  };
+
   if (!conversationId) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center bg-neutral-50 text-neutral-400">
@@ -101,13 +157,15 @@ export function ChatArea({ conversationId }: { conversationId: string }) {
               >
                 <p className="whitespace-pre-wrap">{msg.body}</p>
                 <div
-                  className={`text-[10px] mt-1 text-right ${isOut ? "text-green-700" : "text-neutral-400"}`}
+                  className={`flex items-center justify-end gap-1 text-[10px] mt-1 ${isOut ? "text-green-700" : "text-neutral-400"}`}
                 >
-                  {new Date(msg.createdAt).toLocaleTimeString([], {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })}
-                  {isOut && <span className="ml-1 opacity-70">✓</span>}
+                  <span>
+                    {new Date(msg.createdAt).toLocaleTimeString([], {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </span>
+                  {isOut && <MessageStatusIcon status={msg.status} />}
                 </div>
               </div>
             </div>
