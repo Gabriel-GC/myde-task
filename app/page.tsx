@@ -27,7 +27,7 @@ function DashboardView() {
           <div className="w-full flex flex-col relative">
             <button
               onClick={() => router.push("/")}
-              className="md:hidden absolute top-[18px] left-2.5 z-10 p-2 bg-white rounded-full shadow-md text-neutral-600 border border-neutral-100"
+              className="md:hidden absolute top-4 left-2.5 z-10 p-2 bg-white rounded-full shadow-md text-neutral-600 border border-neutral-100"
             >
               <svg
                 className="w-5 h-5"

@@ -129,7 +129,6 @@ export function Sidebar({ activeId, onSelect }: SidebarProps) {
 
   return (
     <aside className="w-full md:w-80 lg:w-[350px] border-r border-neutral-200 bg-white flex flex-col h-full select-none relative">
-      {/* Backdrop transparente para fechar dropdowns abertos */}
       {activeMenuId && (
         <div
           className="fixed inset-0 z-30 cursor-default"
@@ -331,7 +330,7 @@ export function Sidebar({ activeId, onSelect }: SidebarProps) {
 
                     <div className="flex justify-between items-center gap-2">
                       <div
-                        className={`text-xs truncate flex items-center gap-1 flex-1 ${
+                        className={`text-xs flex items-center gap-1 flex-1 min-w-0 ${
                           isUnread
                             ? "text-neutral-950 font-bold"
                             : "text-neutral-500"
@@ -345,7 +344,7 @@ export function Sidebar({ activeId, onSelect }: SidebarProps) {
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
                               </svg>
                             </span>
-                            <span>Imagem</span>
+                            <span className="truncate">Imagem</span>
                           </>
                         ) : isFilePreview ? (
                           <>
@@ -354,10 +353,10 @@ export function Sidebar({ activeId, onSelect }: SidebarProps) {
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.414M18 10.5V6a2 2 0 00-2-2h-4.5m4.5 4.5H16" />
                               </svg>
                             </span>
-                            <span>Arquivo</span>
+                            <span className="truncate">Arquivo</span>
                           </>
                         ) : (
-                          <span>{chat.lastMessage || "Nenhuma mensagem"}</span>
+                          <span className="truncate">{chat.lastMessage || "Nenhuma mensagem"}</span>
                         )}
                       </div>
 
