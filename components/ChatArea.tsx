@@ -116,25 +116,26 @@ export function ChatArea({ conversationId }: { conversationId: string }) {
 
   return (
     <div className="flex-1 flex flex-col h-full bg-[#EFEAE2]">
-      {/* Header do Chat */}
-      <div className="bg-white px-6 py-4 border-b border-neutral-200 flex items-center gap-4">
+      <div className="bg-white pl-14 pr-4 py-3.5 md:px-6 md:py-4 border-b border-neutral-200 flex items-center gap-3">
         {chatInfo && (
           <div
-            className="w-10 h-10 rounded-full flex items-center justify-center text-white font-medium"
+            className="w-10 h-10 rounded-full flex items-center justify-center text-white font-medium shrink-0"
             style={{ backgroundColor: chatInfo.avatarColor || "#ccc" }}
           >
             {chatInfo.contactName.charAt(0).toUpperCase()}
           </div>
         )}
-        <div>
-          <h2 className="font-medium text-neutral-900">
+        <div className="min-w-0 flex-1">
+          <h2 className="font-semibold text-neutral-900 truncate text-sm md:text-base">
             {chatInfo?.contactName || "Carregando..."}
           </h2>
-          <p className="text-xs text-neutral-500">{chatInfo?.contactPhone}</p>
+          <p className="text-xs text-neutral-500 truncate">
+            {chatInfo?.contactPhone}
+          </p>
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-4">
+      <div className="flex-1 overflow-y-auto p-4 md:p-6 flex flex-col gap-4">
         {isLoading && (
           <div className="text-center text-neutral-500 mt-4">
             Carregando mensagens...
@@ -149,13 +150,13 @@ export function ChatArea({ conversationId }: { conversationId: string }) {
               className={`flex ${isOut ? "justify-end" : "justify-start"}`}
             >
               <div
-                className={`max-w-[70%] px-4 py-2 rounded-2xl shadow-sm text-sm ${
+                className={`max-w-[85%] md:max-w-[70%] px-4 py-2 rounded-2xl shadow-sm text-sm ${
                   isOut
                     ? "bg-[#D9FDD3] text-neutral-900 rounded-tr-none"
                     : "bg-white text-neutral-900 rounded-tl-none"
                 }`}
               >
-                <p className="whitespace-pre-wrap">{msg.body}</p>
+                <p className="whitespace-pre-wrap break-words">{msg.body}</p>
                 <div
                   className={`flex items-center justify-end gap-1 text-[10px] mt-1 ${isOut ? "text-green-700" : "text-neutral-400"}`}
                 >
@@ -180,7 +181,6 @@ export function ChatArea({ conversationId }: { conversationId: string }) {
             onClick={handleAiSuggest}
             disabled={isSuggesting}
             className="text-xs flex items-center gap-1 text-blue-600 hover:text-blue-800 disabled:opacity-50 transition-colors"
-            title="A IA analisará o contexto e sugerirá uma resposta"
           >
             ✨ {isSuggesting ? "Pensando..." : "Sugerir resposta com IA"}
           </button>
@@ -202,7 +202,7 @@ export function ChatArea({ conversationId }: { conversationId: string }) {
           <button
             type="submit"
             disabled={!draft.trim()}
-            className="bg-blue-600 hover:bg-blue-700 disabled:bg-neutral-300 text-white rounded-full p-3 h-[44px] w-[44px] flex items-center justify-center transition-colors"
+            className="bg-blue-600 hover:bg-blue-700 disabled:bg-neutral-300 text-white rounded-full p-3 h-[44px] w-[44px] flex items-center justify-center transition-colors shrink-0"
           >
             <svg
               className="w-5 h-5 ml-1"

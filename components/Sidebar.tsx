@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useConversations } from "@/hooks/useApi";
 import { useChatPreferences } from "@/hooks/useChatPreferences";
 import { Conversation } from "@/lib/api";
@@ -14,10 +14,7 @@ function SidebarSkeleton() {
   return (
     <div className="flex flex-col gap-1 p-2">
       {[...Array(5)].map((_, i) => (
-        <div
-          key={i}
-          className="flex items-center gap-3 p-3 rounded-xl border border-transparent"
-        >
+        <div key={i} className="flex items-center gap-3 p-3 rounded-xl border border-transparent">
           <div className="w-11 h-11 rounded-full bg-neutral-200 animate-pulse shrink-0" />
           <div className="flex-1 min-w-0 py-1">
             <div className="flex justify-between items-baseline mb-2">
