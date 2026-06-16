@@ -246,6 +246,17 @@ export function Sidebar({ activeId, onSelect }: SidebarProps) {
               const isPinned = pinnedIds.includes(chat.id);
               const isUnread = chat.unread > 0;
 
+              let isFilePreview = false;
+              let isImagePreview = false;
+
+              if (chat.lastMessage && chat.lastMessage.startsWith('{"type":"file"')) {
+                try {
+                  const fileData = JSON.parse(chat.lastMessage);
+                  isFilePreview = fileData.type === "file";
+                  isImagePreview = isFilePreview && fileData.fileType.startsWith("image/");
+                } catch {}
+              }
+
               return (
                 <div
                   key={chat.id}
@@ -319,15 +330,36 @@ export function Sidebar({ activeId, onSelect }: SidebarProps) {
                     </div>
 
                     <div className="flex justify-between items-center gap-2">
-                      <p
-                        className={`text-xs truncate ${
+                      <div
+                        className={`text-xs truncate flex items-center gap-1 flex-1 ${
                           isUnread
-                            ? "text-neutral-900 font-semibold"
+                            ? "text-neutral-950 font-bold"
                             : "text-neutral-500"
                         }`}
                       >
-                        {chat.lastMessage || "Nenhuma mensagem"}
-                      </p>
+                        {isImagePreview ? (
+                          <>
+                            <span className="text-blue-500 shrink-0">
+                              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                              </svg>
+                            </span>
+                            <span>Imagem</span>
+                          </>
+                        ) : isFilePreview ? (
+                          <>
+                            <span className="text-neutral-400 shrink-0">
+                              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.414M18 10.5V6a2 2 0 00-2-2h-4.5m4.5 4.5H16" />
+                              </svg>
+                            </span>
+                            <span>Arquivo</span>
+                          </>
+                        ) : (
+                          <span>{chat.lastMessage || "Nenhuma mensagem"}</span>
+                        )}
+                      </div>
 
                       {isUnread && (
                         <span className="min-w-4.5 h-4.5 px-1.5 rounded-full bg-blue-600 text-white text-[10px] font-extrabold flex items-center justify-center shrink-0 shadow-xs">
