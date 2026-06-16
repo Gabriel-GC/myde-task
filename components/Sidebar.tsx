@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useConversations } from "@/hooks/useApi";
 import { useChatPreferences } from "@/hooks/useChatPreferences";
 import { Conversation } from "@/lib/api";
+import { MessageSquare, Search, X, Pin, Camera, Paperclip, MoreVertical, Archive, ArchiveRestore, Trash2 } from "lucide-react";
 
 interface SidebarProps {
   activeId: string | null;
@@ -33,19 +34,7 @@ function EmptyState({ showArchived }: { showArchived: boolean }) {
   return (
     <div className="flex flex-col items-center justify-center p-8 text-center h-64 animate-in fade-in duration-300">
       <div className="p-4 bg-neutral-100 rounded-full mb-3 text-neutral-400">
-        <svg
-          className="w-10 h-10"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={1.5}
-            d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
-          />
-        </svg>
+        <MessageSquare className="w-10 h-10" strokeWidth={1.5} />
       </div>
       <h3 className="text-sm font-semibold text-neutral-700">
         Nenhuma conversa
@@ -186,19 +175,7 @@ export function Sidebar({ activeId, onSelect }: SidebarProps) {
 
         <div className="relative flex items-center">
           <span className="absolute left-3 text-neutral-400 pointer-events-none">
-            <svg
-              className="w-4 h-4"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2.5}
-                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-              />
-            </svg>
+            <Search className="w-4 h-4" strokeWidth={2.5} />
           </span>
           <input
             type="text"
@@ -213,19 +190,7 @@ export function Sidebar({ activeId, onSelect }: SidebarProps) {
               className="absolute right-2.5 p-0.5 rounded-full hover:bg-neutral-200 text-neutral-400 hover:text-neutral-600 transition-colors"
               title="Limpar busca"
             >
-              <svg
-                className="w-4 h-4"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M6 18L18 6M6 6l12 12"
-                />
-              </svg>
+              <X className="w-4 h-4" strokeWidth={2} />
             </button>
           )}
         </div>
@@ -301,19 +266,7 @@ export function Sidebar({ activeId, onSelect }: SidebarProps) {
                             className="text-blue-500"
                             title="Conversa Fixada"
                           >
-                            <svg
-                              className="w-3.5 h-3.5"
-                              fill="none"
-                              viewBox="0 0 24 24"
-                              stroke="currentColor"
-                            >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2.5}
-                                d="M5 5h14l-4 4v6l-2 2v3l-1-1-1 1v-3l-2-2V9L5 5z"
-                              />
-                            </svg>
+                            <Pin className="w-3.5 h-3.5" />
                           </span>
                         )}
                         <span
@@ -338,21 +291,12 @@ export function Sidebar({ activeId, onSelect }: SidebarProps) {
                       >
                         {isImagePreview ? (
                           <>
-                            <span className="text-blue-500 shrink-0">
-                              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
-                              </svg>
-                            </span>
+                             <Camera className="w-3.5 h-3.5 text-blue-500 shrink-0" strokeWidth={2.5} />
                             <span className="truncate">Imagem</span>
                           </>
                         ) : isFilePreview ? (
                           <>
-                            <span className="text-neutral-400 shrink-0">
-                              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.414M18 10.5V6a2 2 0 00-2-2h-4.5m4.5 4.5H16" />
-                              </svg>
-                            </span>
+                             <Paperclip className="w-3.5 h-3.5 text-neutral-400 shrink-0" strokeWidth={2.5} />
                             <span className="truncate">Arquivo</span>
                           </>
                         ) : (
@@ -383,19 +327,7 @@ export function Sidebar({ activeId, onSelect }: SidebarProps) {
                       }`}
                       title="Opções"
                     >
-                      <svg
-                        className="w-4.5 h-4.5"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2.5}
-                          d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"
-                        />
-                      </svg>
+                      <MoreVertical className="w-4.5 h-4.5" strokeWidth={2.5} />
                     </button>
 
                     {activeMenuId === chat.id && (
@@ -411,19 +343,7 @@ export function Sidebar({ activeId, onSelect }: SidebarProps) {
                           }}
                           className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-neutral-700 hover:bg-neutral-50 transition-colors"
                         >
-                          <svg
-                            className="w-3.5 h-3.5 text-neutral-400"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M5 5h14l-4 4v6l-2 2v3l-1-1-1 1v-3l-2-2V9L5 5z"
-                            />
-                          </svg>
+                          <Pin className="w-3.5 h-3.5 text-neutral-400" strokeWidth={2} />
                           <span>{isPinned ? "Desafixar" : "Fixar"}</span>
                         </button>
 
@@ -435,28 +355,11 @@ export function Sidebar({ activeId, onSelect }: SidebarProps) {
                           }}
                           className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-neutral-700 hover:bg-neutral-50 transition-colors"
                         >
-                          <svg
-                            className="w-3.5 h-3.5 text-neutral-400"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                          >
-                            {showArchived ? (
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M3 10h10a8 8 0 018 8v2M3 10v6a2 2 0 002 2h14a2 2 0 002-2v-6M3 10a2 2 0 012-2h14a2 2 0 012 2"
-                              />
-                            ) : (
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"
-                              />
-                            )}
-                          </svg>
+                          {showArchived ? (
+                            <ArchiveRestore className="w-3.5 h-3.5 text-neutral-400" strokeWidth={2} />
+                          ) : (
+                            <Archive className="w-3.5 h-3.5 text-neutral-400" strokeWidth={2} />
+                          )}
                           <span>
                             {showArchived ? "Desarquivar" : "Arquivar"}
                           </span>
@@ -468,19 +371,7 @@ export function Sidebar({ activeId, onSelect }: SidebarProps) {
                           onClick={(e) => handleDeleteClick(e, chat.id)}
                           className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-red-600 hover:bg-red-50 transition-colors"
                         >
-                          <svg
-                            className="w-3.5 h-3.5 text-red-500"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                            />
-                          </svg>
+                          <Trash2 className="w-3.5 h-3.5 text-red-500" strokeWidth={2} />
                           <span>Excluir</span>
                         </button>
                       </div>

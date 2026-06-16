@@ -4,6 +4,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { Sidebar } from "@/components/Sidebar";
 import { ChatArea } from "@/components/ChatArea";
 import { Suspense } from "react";
+import { ArrowLeft } from "lucide-react";
 
 function DashboardView() {
   const searchParams = useSearchParams();
@@ -27,21 +28,9 @@ function DashboardView() {
           <div className="w-full flex flex-col relative">
             <button
               onClick={() => router.push("/")}
-              className="md:hidden absolute top-4 left-2.5 z-10 p-2 bg-white rounded-full shadow-md text-neutral-600 border border-neutral-100"
+              className="md:hidden absolute top-4 left-2.5 z-10 p-2 bg-white rounded-full shadow-md text-neutral-600 border border-neutral-100 flex items-center justify-center"
             >
-              <svg
-                className="w-5 h-5"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M10 19l-7-7m0 0l7-7m-7 7h18"
-                />
-              </svg>
+              <ArrowLeft className="w-5 h-5" />
             </button>
             <ChatArea conversationId={activeChatId} />
           </div>
