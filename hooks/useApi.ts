@@ -4,6 +4,7 @@ import {
   getMessages,
   sendMessage,
   suggestReply,
+  getMe,
   Conversation,
   Message,
 } from "@/lib/api";
@@ -68,5 +69,12 @@ export function useSendMessage() {
 export function useAiSuggestion() {
   return useMutation({
     mutationFn: (conversationId: string) => suggestReply(conversationId),
+  });
+}
+
+export function useMe() {
+  return useQuery({
+    queryKey: ["me"],
+    queryFn: getMe,
   });
 }

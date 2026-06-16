@@ -6,6 +6,7 @@ import {
   useSendMessage,
   useAiSuggestion,
   useConversations,
+  useMe,
 } from "@/hooks/useApi";
 import { useDraft } from "@/hooks/useDraft";
 import { Search, ChevronLeft, ChevronRight, X, Check, CheckCheck, MessageSquare, FileDown, Zap, Sparkles, Copy, Smile, Paperclip, Send } from "lucide-react";
@@ -48,6 +49,7 @@ export function ChatArea({ conversationId }: { conversationId: string }) {
 
   const { data: conversations } = useConversations();
   const chatInfo = conversations?.find((c) => c.id === conversationId);
+  const { data: me } = useMe();
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const lastConversationIdRef = useRef<string | null>(null);
@@ -390,6 +392,10 @@ export function ChatArea({ conversationId }: { conversationId: string }) {
           const prevMsgDate = index > 0 ? new Date(messages[index - 1].createdAt).toDateString() : null;
           const showDivider = msgDate !== prevMsgDate;
 
+          const isFirstOfBlock = index === 0 || 
+            messages[index - 1].direction !== msg.direction || 
+            showDivider;
+
           let isFile = false;
           let fileData: any = null;
 
@@ -405,79 +411,113 @@ export function ChatArea({ conversationId }: { conversationId: string }) {
           const isHighlighted = highlightedMessageId === msg.id;
 
           return (
-            <div key={msg.id} id={`msg-${msg.id}`} className="flex flex-col gap-4">
+            <div key={msg.id} id={`msg-${msg.id}`} className={`flex flex-col ${isFirstOfBlock && index > 0 ? "mt-4" : "mt-1"}`}>
               {showDivider && (
-                <div className="flex items-center justify-center my-2 select-none">
+                <div className="flex items-center justify-center my-3 select-none">
                   <span className="bg-white/80 backdrop-blur-xs border border-neutral-200/50 text-neutral-500 text-[10px] md:text-xs font-semibold px-3 py-1 rounded-full shadow-xs">
                     {formatDateLabel(msg.createdAt)}
                   </span>
                 </div>
               )}
-              <div className={`flex ${isOut ? "justify-end" : "justify-start"}`}>
-                <div
-                  className={`max-w-[85%] md:max-w-[70%] px-4 py-2 rounded-2xl shadow-sm text-sm transition-all duration-300 ${
-                    isOut
-                      ? "bg-[#D9FDD3] text-neutral-900 rounded-tr-none"
-                      : "bg-white text-neutral-900 rounded-tl-none"
-                  } ${
-                    isHighlighted
-                      ? "ring-4 ring-yellow-400 ring-offset-2 scale-102 border-yellow-300"
-                      : "border-transparent"
-                  }`}
-                >
-                  {isFile && fileData ? (
-                    fileData.fileType.startsWith("image/") ? (
-                      <div className="flex flex-col gap-1.5">
-                        <img
-                          src={fileData.data}
-                          alt={fileData.fileName}
-                          className="max-w-full max-h-60 rounded-lg object-cover cursor-pointer hover:opacity-95 transition-opacity"
-                          onClick={() => setPreviewImageUrl(fileData.data)}
-                        />
-                        {fileData.caption && (
-                          <p className="whitespace-pre-wrap break-words text-sm mt-0.5">{fileData.caption}</p>
-                        )}
-                      </div>
-                    ) : (
-                      <div className="flex flex-col gap-2">
-                        <a
-                          href={fileData.data}
-                          download={fileData.fileName}
-                          className="flex items-center gap-2.5 p-2 bg-black/5 rounded-lg border border-black/10 hover:bg-black/10 transition-colors"
-                        >
-                          <div className="p-1.5 bg-white rounded text-neutral-600">
-                            <FileDown className="w-5 h-5" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-xs font-semibold truncate text-neutral-850">
-                              {fileData.fileName}
-                            </p>
-                            <p className="text-[10px] text-neutral-500">
-                              Clique para baixar
-                            </p>
-                          </div>
-                        </a>
-                        {fileData.caption && (
-                          <p className="whitespace-pre-wrap break-words text-sm mt-0.5">{fileData.caption}</p>
-                        )}
-                      </div>
-                    )
+              <div className={`flex items-start gap-1.5 md:gap-2.5 ${isOut ? "justify-end" : "justify-start"}`}>
+                {!isOut && (
+                  isFirstOfBlock ? (
+                    <div
+                      className="w-7 h-7 md:w-8 md:h-8 rounded-full flex items-center justify-center text-white text-[10px] md:text-[11px] font-bold shrink-0 shadow-inner select-none animate-in fade-in zoom-in-90 duration-150"
+                      style={{ backgroundColor: chatInfo?.avatarColor || "#9ca3af" }}
+                    >
+                      {chatInfo?.contactName?.charAt(0).toUpperCase() || "?"}
+                    </div>
                   ) : (
-                    <p className="whitespace-pre-wrap break-words">{msg.body}</p>
-                  )}
+                    <div className="w-7 h-7 md:w-8 md:h-8 shrink-0" />
+                  )
+                )}
 
-                  <div
-                    className={`flex items-center justify-end gap-1 text-[10px] mt-1 ${isOut ? "text-green-700" : "text-neutral-400"}`}
-                  >
-                    <span>
-                      {new Date(msg.createdAt).toLocaleTimeString([], {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
+                <div className={`flex flex-col max-w-[80%] md:max-w-[70%] ${isOut ? "items-end" : "items-start"}`}>
+                  {isFirstOfBlock && (
+                    <span className="text-[9px] md:text-[10px] font-bold text-neutral-500 mb-0.5 px-1 select-none animate-in fade-in duration-150">
+                      {isOut ? (me?.name || "Você") : (chatInfo?.contactName || "Contato")}
                     </span>
-                    {isOut && <MessageStatusIcon status={msg.status} />}
+                  )}
+                  
+                  <div
+                    className={`w-full px-3.5 py-1.5 md:py-2 rounded-2xl shadow-sm text-sm transition-all duration-300 ${
+                      isOut
+                        ? `bg-[#D9FDD3] text-neutral-900 ${isFirstOfBlock ? "rounded-tr-none" : ""}`
+                        : `bg-white text-neutral-900 ${isFirstOfBlock ? "rounded-tl-none" : ""}`
+                    } ${
+                      isHighlighted
+                        ? "ring-4 ring-yellow-400 ring-offset-2 scale-102 border-yellow-300"
+                        : "border-transparent"
+                    }`}
+                  >
+                    {isFile && fileData ? (
+                      fileData.fileType.startsWith("image/") ? (
+                        <div className="flex flex-col gap-1.5">
+                          <img
+                            src={fileData.data}
+                            alt={fileData.fileName}
+                            className="max-w-full max-h-60 rounded-lg object-cover cursor-pointer hover:opacity-95 transition-opacity"
+                            onClick={() => setPreviewImageUrl(fileData.data)}
+                          />
+                          {fileData.caption && (
+                            <p className="whitespace-pre-wrap break-words text-sm mt-0.5">{fileData.caption}</p>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="flex flex-col gap-2">
+                          <a
+                            href={fileData.data}
+                            download={fileData.fileName}
+                            className="flex items-center gap-2.5 p-2 bg-black/5 rounded-lg border border-black/10 hover:bg-black/10 transition-colors"
+                          >
+                            <div className="p-1.5 bg-white rounded text-neutral-600">
+                              <FileDown className="w-5 h-5" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs font-semibold truncate text-neutral-850">
+                                {fileData.fileName}
+                              </p>
+                              <p className="text-[10px] text-neutral-500">
+                                Clique para baixar
+                              </p>
+                            </div>
+                          </a>
+                          {fileData.caption && (
+                            <p className="whitespace-pre-wrap break-words text-sm mt-0.5">{fileData.caption}</p>
+                          )}
+                        </div>
+                      )
+                    ) : (
+                      <p className="whitespace-pre-wrap break-words">{msg.body}</p>
+                    )}
+
+                    <div
+                      className={`flex items-center justify-end gap-1 text-[10px] mt-1 ${isOut ? "text-green-700" : "text-neutral-400"}`}
+                    >
+                      <span>
+                        {new Date(msg.createdAt).toLocaleTimeString([], {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </span>
+                      {isOut && <MessageStatusIcon status={msg.status} />}
+                    </div>
                   </div>
                 </div>
+
+                {isOut && (
+                  isFirstOfBlock ? (
+                    <div
+                      className="w-7 h-7 md:w-8 md:h-8 rounded-full flex items-center justify-center text-white text-[10px] md:text-[11px] font-bold shrink-0 shadow-inner select-none animate-in fade-in zoom-in-90 duration-150"
+                      style={{ backgroundColor: "#2563eb" }}
+                    >
+                      {me?.name?.charAt(0).toUpperCase() || "V"}
+                    </div>
+                  ) : (
+                    <div className="w-7 h-7 md:w-8 md:h-8 shrink-0" />
+                  )
+                )}
               </div>
             </div>
           );
