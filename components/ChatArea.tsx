@@ -9,6 +9,29 @@ import {
 } from "@/hooks/useApi";
 import { useDraft } from "@/hooks/useDraft";
 
+function formatDateLabel(isoString: string) {
+  try {
+    const date = new Date(isoString);
+    const today = new Date();
+    const yesterday = new Date();
+    yesterday.setDate(today.getDate() - 1);
+
+    if (date.toDateString() === today.toDateString()) {
+      return "Hoje";
+    }
+    if (date.toDateString() === yesterday.toDateString()) {
+      return "Ontem";
+    }
+    return date.toLocaleDateString("pt-BR", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    });
+  } catch {
+    return "";
+  }
+}
+
 export function ChatArea({ conversationId }: { conversationId: string }) {
   const { data: messages, isLoading } = useMessages(conversationId);
   const { mutate: sendMessage } = useSendMessage();
@@ -19,8 +42,21 @@ export function ChatArea({ conversationId }: { conversationId: string }) {
   const chatInfo = conversations?.find((c) => c.id === conversationId);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const lastConversationIdRef = useRef<string | null>(null);
+  const hasScrolledRef = useRef<boolean>(false);
+
+  if (lastConversationIdRef.current !== conversationId) {
+    lastConversationIdRef.current = conversationId;
+    hasScrolledRef.current = false;
+  }
 
   useEffect(() => {
+    if (!messages) return;
+    if (!hasScrolledRef.current) {
+      messagesEndRef.current?.scrollIntoView({ behavior: "auto" });
+      hasScrolledRef.current = true;
+      return;
+    }
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
@@ -142,31 +178,41 @@ export function ChatArea({ conversationId }: { conversationId: string }) {
           </div>
         )}
 
-        {messages?.map((msg) => {
+        {messages?.map((msg, index) => {
           const isOut = msg.direction === "out";
+          const msgDate = new Date(msg.createdAt).toDateString();
+          const prevMsgDate = index > 0 ? new Date(messages[index - 1].createdAt).toDateString() : null;
+          const showDivider = msgDate !== prevMsgDate;
+
           return (
-            <div
-              key={msg.id}
-              className={`flex ${isOut ? "justify-end" : "justify-start"}`}
-            >
-              <div
-                className={`max-w-[85%] md:max-w-[70%] px-4 py-2 rounded-2xl shadow-sm text-sm ${
-                  isOut
-                    ? "bg-[#D9FDD3] text-neutral-900 rounded-tr-none"
-                    : "bg-white text-neutral-900 rounded-tl-none"
-                }`}
-              >
-                <p className="whitespace-pre-wrap break-words">{msg.body}</p>
-                <div
-                  className={`flex items-center justify-end gap-1 text-[10px] mt-1 ${isOut ? "text-green-700" : "text-neutral-400"}`}
-                >
-                  <span>
-                    {new Date(msg.createdAt).toLocaleTimeString([], {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
+            <div key={msg.id} className="flex flex-col gap-4">
+              {showDivider && (
+                <div className="flex items-center justify-center my-2 select-none">
+                  <span className="bg-white/80 backdrop-blur-xs border border-neutral-200/50 text-neutral-500 text-[10px] md:text-xs font-semibold px-3 py-1 rounded-full shadow-xs">
+                    {formatDateLabel(msg.createdAt)}
                   </span>
-                  {isOut && <MessageStatusIcon status={msg.status} />}
+                </div>
+              )}
+              <div className={`flex ${isOut ? "justify-end" : "justify-start"}`}>
+                <div
+                  className={`max-w-[85%] md:max-w-[70%] px-4 py-2 rounded-2xl shadow-sm text-sm ${
+                    isOut
+                      ? "bg-[#D9FDD3] text-neutral-900 rounded-tr-none"
+                      : "bg-white text-neutral-900 rounded-tl-none"
+                  }`}
+                >
+                  <p className="whitespace-pre-wrap break-words">{msg.body}</p>
+                  <div
+                    className={`flex items-center justify-end gap-1 text-[10px] mt-1 ${isOut ? "text-green-700" : "text-neutral-400"}`}
+                  >
+                    <span>
+                      {new Date(msg.createdAt).toLocaleTimeString([], {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </span>
+                    {isOut && <MessageStatusIcon status={msg.status} />}
+                  </div>
                 </div>
               </div>
             </div>
