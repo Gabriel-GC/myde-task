@@ -94,6 +94,47 @@ export function ChatArea({ conversationId }: { conversationId: string }) {
   const [searchMatches, setSearchMatches] = useState<string[]>([]);
   const [currentMatchIndex, setCurrentMatchIndex] = useState(0);
 
+  const [aiEnabled, setAiEnabled] = useState(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("myde_ai_enabled") !== "false";
+    }
+    return true;
+  });
+  const [soundAlerts, setSoundAlerts] = useState(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("myde_sound_alerts") !== "false";
+    }
+    return true;
+  });
+
+  useEffect(() => {
+    const updateSettings = () => {
+      const ai = localStorage.getItem("myde_ai_enabled") !== "false";
+      setAiEnabled(ai);
+      if (!ai) {
+        setAiSuggestion(null);
+      }
+      setSoundAlerts(localStorage.getItem("myde_sound_alerts") !== "false");
+    };
+    window.addEventListener("myde_settings_changed", updateSettings);
+    return () => window.removeEventListener("myde_settings_changed", updateSettings);
+  }, []);
+
+  const lastMsgIdRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!messages || messages.length === 0) return;
+    const lastMsg = messages[messages.length - 1];
+    if (lastMsgIdRef.current && lastMsgIdRef.current !== lastMsg.id && lastMsg.direction === "in") {
+      if (soundAlerts) {
+        const audio = new Audio("https://assets.mixkit.co/active_storage/sfx/2357/2357-84.wav");
+        audio.volume = 0.5;
+        audio.play().catch(() => {});
+      }
+    }
+    lastMsgIdRef.current = lastMsg.id;
+  }, [messages, soundAlerts]);
+
   if (lastConversationIdRef.current !== conversationId) {
     lastConversationIdRef.current = conversationId;
     hasScrolledRef.current = false;
@@ -108,6 +149,7 @@ export function ChatArea({ conversationId }: { conversationId: string }) {
     setSearchMatches([]);
     setCurrentMatchIndex(0);
     setIsMultiLine(false);
+    lastMsgIdRef.current = null;
   }
 
   useEffect(() => {
@@ -585,7 +627,7 @@ export function ChatArea({ conversationId }: { conversationId: string }) {
             </div>
           )}
 
-          {(isSuggesting || aiSuggestion) && (
+          {aiEnabled && (isSuggesting || aiSuggestion) && (
             <div className="mb-3.5 p-3 bg-blue-50/50 backdrop-blur-xs rounded-xl border border-blue-100/80 flex flex-col gap-2.5 animate-in slide-in-from-bottom-2 duration-200">
               <div className="flex justify-between items-center">
                 <span className="text-[10px] font-bold text-blue-600 flex items-center gap-1 uppercase tracking-wider select-none">
@@ -682,17 +724,19 @@ export function ChatArea({ conversationId }: { conversationId: string }) {
             />
             
             <div className="hidden md:flex items-center gap-2 md:mb-0 shrink-0">
-              <button
-                type="button"
-                onClick={handleAiSuggest}
-                disabled={isSuggesting}
-                className={`p-1.5 rounded-lg text-blue-500 hover:bg-blue-100 hover:text-blue-600 transition-all shrink-0 ${
-                  isSuggesting ? "animate-pulse" : "active:scale-95"
-                }`}
-                title="Sugerir resposta com IA"
-              >
-                <Sparkles className={`w-5 h-5 ${isSuggesting ? "animate-spin" : ""}`} />
-              </button>
+              {aiEnabled && (
+                <button
+                  type="button"
+                  onClick={handleAiSuggest}
+                  disabled={isSuggesting}
+                  className={`p-1.5 rounded-lg text-blue-500 hover:bg-blue-100 hover:text-blue-600 transition-all shrink-0 ${
+                    isSuggesting ? "animate-pulse" : "active:scale-95"
+                  }`}
+                  title="Sugerir resposta com IA"
+                >
+                  <Sparkles className={`w-5 h-5 ${isSuggesting ? "animate-spin" : ""}`} />
+                </button>
+              )}
 
               <button
                 type="submit"
@@ -717,17 +761,19 @@ export function ChatArea({ conversationId }: { conversationId: string }) {
                   <Smile className="w-5 h-5" />
                 </button>
 
-                <button
-                  type="button"
-                  onClick={handleAiSuggest}
-                  disabled={isSuggesting}
-                  className={`p-1.5 rounded-lg text-blue-500 hover:bg-blue-100 hover:text-blue-600 transition-all shrink-0 ${
-                    isSuggesting ? "animate-pulse" : "active:scale-95"
-                  }`}
-                  title="Sugerir resposta com IA"
-                >
-                  <Sparkles className={`w-5 h-5 ${isSuggesting ? "animate-spin" : ""}`} />
-                </button>
+                {aiEnabled && (
+                  <button
+                    type="button"
+                    onClick={handleAiSuggest}
+                    disabled={isSuggesting}
+                    className={`p-1.5 rounded-lg text-blue-500 hover:bg-blue-100 hover:text-blue-600 transition-all shrink-0 ${
+                      isSuggesting ? "animate-pulse" : "active:scale-95"
+                    }`}
+                    title="Sugerir resposta com IA"
+                  >
+                    <Sparkles className={`w-5 h-5 ${isSuggesting ? "animate-spin" : ""}`} />
+                  </button>
+                )}
 
                 <button
                   type="button"
