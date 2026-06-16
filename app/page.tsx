@@ -1,26 +1,68 @@
-import { ConnectionCheck } from "./connection-check";
+"use client";
+
+import { useSearchParams, useRouter } from "next/navigation";
+import { Sidebar } from "@/components/Sidebar";
+import { ChatArea } from "@/components/ChatArea";
+import { Suspense } from "react";
+
+function DashboardView() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const activeChatId = searchParams.get("chat");
+
+  const handleSelectChat = (id: string) => {
+    router.push(`/?chat=${id}`);
+  };
+
+  return (
+    <main className="flex h-screen w-full bg-white overflow-hidden font-sans">
+      <div className={`${activeChatId ? "hidden md:flex" : "flex"} h-full`}>
+        <Sidebar activeId={activeChatId} onSelect={handleSelectChat} />
+      </div>
+
+      <div
+        className={`${activeChatId ? "flex" : "hidden md:flex"} flex-1 h-full`}
+      >
+        {activeChatId ? (
+          <div className="w-full flex flex-col relative">
+            <button
+              onClick={() => router.push("/")}
+              className="md:hidden absolute top-4 left-2 z-10 p-2 bg-white rounded-full shadow-md text-neutral-600"
+            >
+              <svg
+                className="w-5 h-5"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M10 19l-7-7m0 0l7-7m-7 7h18"
+                />
+              </svg>
+            </button>
+            <ChatArea conversationId={activeChatId} />
+          </div>
+        ) : (
+          <ChatArea conversationId="" />
+        )}
+      </div>
+    </main>
+  );
+}
 
 export default function Home() {
   return (
-    <main className="mx-auto max-w-2xl px-6 py-16">
-      <h1 className="text-2xl font-semibold">Desafio Frontend — Inbox de Atendimento</h1>
-      <p className="mt-2 text-neutral-600">
-        Este é o ponto de partida. O backend já está conectado (veja{" "}
-        <code className="rounded bg-neutral-100 px-1">lib/api.ts</code>). Sua missão é construir
-        a interface do inbox de atendimento WhatsApp. Veja o <code className="rounded bg-neutral-100 px-1">README.md</code>.
-      </p>
-
-      <div className="mt-8 rounded-lg border border-neutral-200 p-4">
-        <h2 className="text-sm font-medium text-neutral-500">Verificação de conexão com a API</h2>
-        <ConnectionCheck />
-      </div>
-
-      <ol className="mt-8 list-decimal space-y-1 pl-5 text-sm text-neutral-700">
-        <li>Lista de conversas (busca, não-lidas, última mensagem).</li>
-        <li>Tela de chat (bolhas in/out, envio com update otimista).</li>
-        <li>Botão &quot;Sugerir resposta com IA&quot; (chama <code>/ai/suggest</code>).</li>
-        <li>Estados de loading, erro e vazio. Capricha na UX. 🚀</li>
-      </ol>
-    </main>
+    <Suspense
+      fallback={
+        <div className="h-screen flex items-center justify-center">
+          Carregando painel...
+        </div>
+      }
+    >
+      <DashboardView />
+    </Suspense>
   );
 }
