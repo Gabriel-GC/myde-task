@@ -97,6 +97,14 @@ export function Sidebar({ activeId, onSelect }: SidebarProps) {
     return () => window.removeEventListener("myde_macros_changed", loadMacros);
   }, []);
 
+  const [editTrigger, setEditTrigger] = useState(0);
+
+  useEffect(() => {
+    const handleEdit = () => setEditTrigger((prev) => prev + 1);
+    window.addEventListener("myde_message_edited", handleEdit);
+    return () => window.removeEventListener("myde_message_edited", handleEdit);
+  }, []);
+
   const handleAddMacro = (e: React.FormEvent) => {
     e.preventDefault();
     const cleanShortcut = newShortcut.trim().toLowerCase().replace(/[^a-z0-9]/g, "");
@@ -351,12 +359,28 @@ export function Sidebar({ activeId, onSelect }: SidebarProps) {
               const isPinned = pinnedIds.includes(chat.id);
               const isUnread = chat.unread > 0;
 
+              const getLastMessageText = () => {
+                if (typeof window !== "undefined") {
+                  const stored = localStorage.getItem(`myde_last_edited_${chat.id}`);
+                  if (stored) {
+                    try {
+                      const { editedText, originalText } = JSON.parse(stored);
+                      if (chat.lastMessage === originalText) {
+                        return editedText;
+                      }
+                    } catch {}
+                  }
+                }
+                return chat.lastMessage || "Nenhuma mensagem";
+              };
+              const lastMsgText = getLastMessageText();
+
               let isFilePreview = false;
               let isImagePreview = false;
 
-              if (chat.lastMessage && chat.lastMessage.startsWith('{"type":"file"')) {
+              if (lastMsgText && lastMsgText.startsWith('{"type":"file"')) {
                 try {
-                  const fileData = JSON.parse(chat.lastMessage);
+                  const fileData = JSON.parse(lastMsgText);
                   isFilePreview = fileData.type === "file";
                   isImagePreview = isFilePreview && fileData.fileType.startsWith("image/");
                 } catch {}
@@ -441,7 +465,7 @@ export function Sidebar({ activeId, onSelect }: SidebarProps) {
                             <span className="truncate">Arquivo</span>
                           </>
                         ) : (
-                          <span className="truncate">{chat.lastMessage || "Nenhuma mensagem"}</span>
+                          <span className="truncate">{lastMsgText}</span>
                         )}
                       </div>
 

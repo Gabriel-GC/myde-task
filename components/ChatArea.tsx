@@ -9,7 +9,7 @@ import {
   useMe,
 } from "@/hooks/useApi";
 import { useDraft } from "@/hooks/useDraft";
-import { Search, ChevronLeft, ChevronRight, X, Check, CheckCheck, MessageSquare, FileDown, Zap, Sparkles, Copy, Smile, Paperclip, Send } from "lucide-react";
+import { Search, ChevronLeft, ChevronRight, X, Check, CheckCheck, MessageSquare, FileDown, Zap, Sparkles, Copy, Smile, Paperclip, Send, Pencil } from "lucide-react";
 
 const EMOJIS = [
   "😊", "😂", "🤣", "😍", "🥰", "😎", "😉", "😅",
@@ -109,6 +109,15 @@ export function ChatArea({ conversationId }: { conversationId: string }) {
 
   const [macros, setMacros] = useState<Array<{ id: string; shortcut: string; text: string }>>([]);
   const [activeMacroIndex, setActiveMacroIndex] = useState(0);
+  const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
+  const [editingText, setEditingText] = useState("");
+  const [editCount, setEditCount] = useState(0);
+
+  useEffect(() => {
+    const handleEdit = () => setEditCount((prev) => prev + 1);
+    window.addEventListener("myde_message_edited", handleEdit);
+    return () => window.removeEventListener("myde_message_edited", handleEdit);
+  }, []);
 
   useEffect(() => {
     const loadMacros = () => {
@@ -155,6 +164,47 @@ export function ChatArea({ conversationId }: { conversationId: string }) {
         }, 0);
       }
     }
+  };
+
+  const getOriginalOrEditedBody = (msg: any) => {
+    if (typeof window !== "undefined") {
+      const edited = localStorage.getItem(`myde_edited_${msg.id}`);
+      if (edited) return edited;
+    }
+    return msg.body;
+  };
+
+  const isMessageEditable = (msg: any) => {
+    if (msg.direction !== "out") return false;
+    if (msg.body.startsWith('{"type":"file"')) return false;
+    const sentMsgs = messages?.filter(m => m.direction === "out" && !m.body.startsWith('{"type":"file"')) || [];
+    const lastTwoSent = sentMsgs.slice(-2);
+    const isOneOfLastTwo = lastTwoSent.some(m => m.id === msg.id);
+    if (!isOneOfLastTwo) return false;
+    const diffMs = Date.now() - new Date(msg.createdAt).getTime();
+    return diffMs < 60000;
+  };
+
+  const handleSaveEdit = (msg: any) => {
+    const diffMs = Date.now() - new Date(msg.createdAt).getTime();
+    if (diffMs > 60000) {
+      alert("O tempo limite de 1 minuto para edição expirou.");
+      setEditingMessageId(null);
+      return;
+    }
+    const cleanText = editingText.trim();
+    if (!cleanText) return;
+    localStorage.setItem(`myde_edited_${msg.id}`, cleanText);
+    const sentMsgs = messages?.filter(m => m.direction === "out") || [];
+    const isLastMessage = sentMsgs.length > 0 && sentMsgs[sentMsgs.length - 1].id === msg.id;
+    if (isLastMessage) {
+      localStorage.setItem(
+        `myde_last_edited_${conversationId}`,
+        JSON.stringify({ editedText: cleanText, originalText: msg.body })
+      );
+    }
+    window.dispatchEvent(new Event("myde_message_edited"));
+    setEditingMessageId(null);
   };
 
   const query = getMacroQuery(draft);
@@ -505,6 +555,8 @@ export function ChatArea({ conversationId }: { conversationId: string }) {
 
         {messages?.map((msg, index) => {
           const isOut = msg.direction === "out";
+          const editedBody = getOriginalOrEditedBody(msg);
+          const wasEdited = editedBody !== msg.body;
           const msgDate = new Date(msg.createdAt).toDateString();
           const prevMsgDate = index > 0 ? new Date(messages[index - 1].createdAt).toDateString() : null;
           const showDivider = msgDate !== prevMsgDate;
@@ -536,7 +588,7 @@ export function ChatArea({ conversationId }: { conversationId: string }) {
                   </span>
                 </div>
               )}
-              <div className={`flex items-start gap-1.5 md:gap-2.5 ${isOut ? "justify-end" : "justify-start"}`}>
+              <div className={`flex items-start gap-1.5 md:gap-2.5 ${isOut ? "justify-end" : "justify-start"} group`}>
                 {!isOut && (
                   isFirstOfBlock ? (
                     <div
@@ -548,6 +600,19 @@ export function ChatArea({ conversationId }: { conversationId: string }) {
                   ) : (
                     <div className="w-7 h-7 md:w-8 md:h-8 shrink-0" />
                   )
+                )}
+
+                {isOut && !isFile && isMessageEditable(msg) && editingMessageId !== msg.id && (
+                  <button
+                    onClick={() => {
+                      setEditingMessageId(msg.id);
+                      setEditingText(getOriginalOrEditedBody(msg));
+                    }}
+                    className="self-center p-1.5 rounded-lg bg-white hover:bg-neutral-50 text-neutral-500 hover:text-neutral-700 shadow-xs opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity cursor-pointer mr-1 border border-neutral-200/50"
+                    title="Editar mensagem"
+                  >
+                    <Pencil className="w-3.5 h-3.5" />
+                  </button>
                 )}
 
                 <div className={`flex flex-col max-w-[80%] md:max-w-[70%] ${isOut ? "items-end" : "items-start"}`}>
@@ -606,12 +671,51 @@ export function ChatArea({ conversationId }: { conversationId: string }) {
                         </div>
                       )
                     ) : (
-                      <p className="whitespace-pre-wrap break-words">{msg.body}</p>
+                      editingMessageId === msg.id ? (
+                        <div className="flex flex-col gap-1.5 py-1 min-w-[200px] text-neutral-800">
+                          <textarea
+                            value={editingText}
+                            onChange={(e) => setEditingText(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter" && !e.shiftKey) {
+                                e.preventDefault();
+                                handleSaveEdit(msg);
+                              }
+                            }}
+                            className="w-full bg-white border border-neutral-300 rounded-lg p-2 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none text-neutral-800"
+                            rows={2}
+                            autoFocus
+                          />
+                          <div className="flex justify-end gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => setEditingMessageId(null)}
+                              className="px-2 py-1 rounded-md text-[10px] font-bold text-neutral-500 hover:bg-black/5 transition-colors cursor-pointer"
+                            >
+                              Cancelar
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleSaveEdit(msg)}
+                              className="px-2 py-1 rounded-md text-[10px] font-bold text-white bg-blue-600 hover:bg-blue-700 transition-colors cursor-pointer"
+                            >
+                              Salvar
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <p className="whitespace-pre-wrap break-words">{editedBody}</p>
+                      )
                     )}
 
                     <div
                       className={`flex items-center justify-end gap-1 text-[10px] mt-1 ${isOut ? "text-green-700" : "text-neutral-400"}`}
                     >
+                      {wasEdited && (
+                        <span className="text-[9px] font-semibold opacity-75 mr-1" title="Mensagem editada">
+                          (editada)
+                        </span>
+                      )}
                       <span>
                         {new Date(msg.createdAt).toLocaleTimeString([], {
                           hour: "2-digit",
