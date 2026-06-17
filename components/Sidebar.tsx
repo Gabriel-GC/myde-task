@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useConversations, useMe } from "@/hooks/useApi";
 import { useChatPreferences } from "@/hooks/useChatPreferences";
 import { Conversation } from "@/lib/api";
-import { MessageSquare, Search, X, Pin, Camera, Paperclip, MoreVertical, Archive, ArchiveRestore, Trash2, Settings } from "lucide-react";
+import { MessageSquare, Search, X, Pin, Camera, Paperclip, MoreVertical, Archive, ArchiveRestore, Trash2, Settings, Menu } from "lucide-react";
 
 interface SidebarProps {
   activeId: string | null;
@@ -50,7 +50,7 @@ function EmptyState({ showArchived }: { showArchived: boolean }) {
 
 export function Sidebar({ activeId, onSelect }: SidebarProps) {
   const { data: conversations, isLoading } = useConversations();
-  const { deletedIds, pinnedIds, archivedIds, toggleAction } =
+  const { deletedIds, pinnedIds, archivedIds, toggleAction, resetPreferences } =
     useChatPreferences();
   const [search, setSearch] = useState("");
   const [showArchived, setShowArchived] = useState(false);
@@ -58,7 +58,74 @@ export function Sidebar({ activeId, onSelect }: SidebarProps) {
   const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
 
   const { data: me } = useMe();
-  const [showSettings, setShowSettings] = useState(false);
+  const [showMacroManager, setShowMacroManager] = useState(false);
+  const [showChatMenu, setShowChatMenu] = useState(false);
+  const [showChatSettingsModal, setShowChatSettingsModal] = useState(false);
+  const [enterToSendSetting, setEnterToSendSetting] = useState(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("myde_enter_to_send") !== "false";
+    }
+    return true;
+  });
+  const [macros, setMacros] = useState<Array<{ id: string; shortcut: string; text: string }>>([]);
+  const [newShortcut, setNewShortcut] = useState("");
+  const [newText, setNewText] = useState("");
+
+  useEffect(() => {
+    localStorage.setItem("myde_enter_to_send", String(enterToSendSetting));
+    window.dispatchEvent(new Event("myde_settings_changed"));
+  }, [enterToSendSetting]);
+
+  useEffect(() => {
+    const loadMacros = () => {
+      const saved = localStorage.getItem("myde_macros");
+      if (saved) {
+        setMacros(JSON.parse(saved));
+      } else {
+        const defaults = [
+          { id: "1", shortcut: "saudacao", text: "Olá! Seja muito bem-vindo ao suporte da Myde. Como posso ajudar você hoje?" },
+          { id: "2", shortcut: "pix", text: "Nossa chave PIX CNPJ é: 12.345.678/0001-90. Após realizar o pagamento, envie o comprovante por aqui!" },
+          { id: "3", shortcut: "suporte", text: "Seu caso foi encaminhado para nossa equipe técnica de segundo nível. Entraremos em contato em até 2 horas." },
+          { id: "4", shortcut: "obrigado", text: "Muito obrigado pelo contato! Se precisar de mais alguma coisa, ficamos à inteira disposição. Tenha um ótimo dia!" }
+        ];
+        localStorage.setItem("myde_macros", JSON.stringify(defaults));
+        setMacros(defaults);
+      }
+    };
+    loadMacros();
+    window.addEventListener("myde_macros_changed", loadMacros);
+    return () => window.removeEventListener("myde_macros_changed", loadMacros);
+  }, []);
+
+  const handleAddMacro = (e: React.FormEvent) => {
+    e.preventDefault();
+    const cleanShortcut = newShortcut.trim().toLowerCase().replace(/[^a-z0-9]/g, "");
+    const cleanText = newText.trim();
+    if (!cleanShortcut || !cleanText) return;
+
+    if (macros.some(m => m.shortcut === cleanShortcut)) {
+      alert("Já existe um atalho com este nome.");
+      return;
+    }
+
+    const updated = [
+      ...macros,
+      { id: String(Date.now()), shortcut: cleanShortcut, text: cleanText }
+    ];
+    localStorage.setItem("myde_macros", JSON.stringify(updated));
+    setMacros(updated);
+    window.dispatchEvent(new Event("myde_macros_changed"));
+
+    setNewShortcut("");
+    setNewText("");
+  };
+
+  const handleDeleteMacro = (id: string) => {
+    const updated = macros.filter(m => m.id !== id);
+    localStorage.setItem("myde_macros", JSON.stringify(updated));
+    setMacros(updated);
+    window.dispatchEvent(new Event("myde_macros_changed"));
+  };
   const [status, setStatus] = useState<"online" | "away" | "busy">(() => {
     if (typeof window !== "undefined") {
       return (localStorage.getItem("myde_agent_status") as any) || "online";
@@ -156,21 +223,54 @@ export function Sidebar({ activeId, onSelect }: SidebarProps) {
 
   return (
     <aside className="w-full md:w-80 lg:w-[350px] border-r border-neutral-200 bg-white flex flex-col h-full select-none relative">
-      {(activeMenuId || showSettings) && (
+      {(activeMenuId || showChatMenu) && (
         <div
           className="fixed inset-0 z-30 cursor-default"
           onClick={() => {
             setActiveMenuId(null);
-            setShowSettings(false);
+            setShowChatMenu(false);
           }}
         />
       )}
 
       <div className="p-4 pb-3 border-b border-neutral-100 flex flex-col gap-3.5">
-        <div className="flex justify-between items-center">
+        <div className="flex justify-between items-center relative">
           <h2 className="text-xl font-bold text-neutral-800 tracking-tight">
             Mensagens
           </h2>
+          <div className="relative">
+            <button
+              onClick={() => setShowChatMenu(!showChatMenu)}
+              className="p-1.5 rounded-lg text-neutral-400 hover:bg-neutral-100 hover:text-neutral-600 transition-all cursor-pointer active:scale-95"
+              title="Opções do Chat"
+            >
+              <MoreVertical className="w-5 h-5" />
+            </button>
+            {showChatMenu && (
+              <div className="absolute right-0 mt-1 w-56 bg-white border border-neutral-200 rounded-xl shadow-xl z-50 p-1 flex flex-col gap-0.5 animate-in fade-in slide-in-from-top-2 duration-150">
+                <button
+                  onClick={() => {
+                    setShowChatMenu(false);
+                    setShowMacroManager(true);
+                  }}
+                  className="w-full text-left px-3 py-2 rounded-lg text-xs font-semibold text-neutral-700 hover:bg-neutral-50 transition-colors flex items-center gap-2 cursor-pointer"
+                >
+                  <MessageSquare className="w-4 h-4 text-neutral-400" />
+                  Respostas Rápidas (Macros)
+                </button>
+                <button
+                  onClick={() => {
+                    setShowChatMenu(false);
+                    setShowChatSettingsModal(true);
+                  }}
+                  className="w-full text-left px-3 py-2 rounded-lg text-xs font-semibold text-neutral-700 hover:bg-neutral-50 transition-colors flex items-center gap-2 cursor-pointer"
+                >
+                  <Settings className="w-4 h-4 text-neutral-400" />
+                  Configurações do Chat
+                </button>
+              </div>
+            )}
+          </div>
         </div>
 
         <div className="bg-neutral-100 p-0.5 rounded-lg flex items-center text-xs font-semibold text-neutral-500">
@@ -450,122 +550,223 @@ export function Sidebar({ activeId, onSelect }: SidebarProps) {
             </p>
           </div>
         </div>
+      </div>
 
-        <button
-          onClick={() => setShowSettings(!showSettings)}
-          className={`p-1.5 rounded-lg text-neutral-400 hover:bg-neutral-200/50 hover:text-neutral-700 transition-all ${
-            showSettings ? "bg-neutral-200/50 text-neutral-700" : ""
-          }`}
-          title="Configurações do Atendente"
-        >
-          <Settings className="w-4.5 h-4.5" />
-        </button>
-
-        {showSettings && (
-          <div
-            className="absolute bottom-[calc(100%+8px)] left-3 right-3 bg-white border border-neutral-100 rounded-xl shadow-xl p-3.5 z-50 flex flex-col gap-3.5 animate-in fade-in slide-in-from-bottom-2 duration-150"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div>
-              <h4 className="text-xs font-extrabold text-neutral-800 uppercase tracking-wider">
-                Configurações da Conta
-              </h4>
-              <p className="text-[10px] text-neutral-400 mt-0.5">Atendente Myde Inbox</p>
-            </div>
-
-            <hr className="border-neutral-100" />
-
-            <div className="flex flex-col gap-1.5">
-              <span className="text-[10px] font-bold text-neutral-500">Status de Atendimento</span>
-              <div className="grid grid-cols-3 gap-1">
-                <button
-                  onClick={() => setStatus("online")}
-                  className={`py-1.5 rounded-md text-[10px] font-semibold border flex items-center justify-center gap-1 transition-all ${
-                    status === "online"
-                      ? "bg-green-50 border-green-200 text-green-700 font-bold"
-                      : "border-neutral-200 hover:bg-neutral-50 text-neutral-600"
-                  }`}
-                >
-                  <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
-                  Online
-                </button>
-                <button
-                  onClick={() => setStatus("away")}
-                  className={`py-1.5 rounded-md text-[10px] font-semibold border flex items-center justify-center gap-1 transition-all ${
-                    status === "away"
-                      ? "bg-amber-50 border-amber-200 text-amber-700 font-bold"
-                      : "border-neutral-200 hover:bg-neutral-50 text-neutral-600"
-                  }`}
-                >
-                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
-                  Ausente
-                </button>
-                <button
-                  onClick={() => setStatus("busy")}
-                  className={`py-1.5 rounded-md text-[10px] font-semibold border flex items-center justify-center gap-1 transition-all ${
-                    status === "busy"
-                      ? "bg-red-50 border-red-200 text-red-700 font-bold"
-                      : "border-neutral-200 hover:bg-neutral-50 text-neutral-600"
-                  }`}
-                >
-                  <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
-                  Ocupado
-                </button>
-              </div>
-            </div>
-
-            <div className="flex items-center justify-between">
-              <div className="flex flex-col">
-                <span className="text-[10px] font-bold text-neutral-700">Assistente de IA</span>
-                <span className="text-[9px] text-neutral-400">Exibir sugestões automáticas</span>
+      {showMacroManager && (
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-200" onClick={() => setShowMacroManager(false)}>
+          <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl p-5 flex flex-col gap-4 animate-in zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
+            <div className="flex justify-between items-center">
+              <div>
+                <h3 className="font-bold text-neutral-800 text-sm uppercase tracking-wide">
+                  Respostas Rápidas (Macros)
+                </h3>
+                <p className="text-[10px] text-neutral-400">Configure atalhos usando / no chat</p>
               </div>
               <button
-                onClick={() => setAiEnabled(!aiEnabled)}
-                className={`w-9 h-5 rounded-full p-0.5 transition-all duration-200 flex items-center ${
-                  aiEnabled ? "bg-blue-600 justify-end" : "bg-neutral-200 justify-start"
-                }`}
+                onClick={() => setShowMacroManager(false)}
+                className="p-1 rounded-full hover:bg-neutral-150 text-neutral-400 hover:text-neutral-600 transition-all cursor-pointer"
               >
-                <span className="w-4 h-4 rounded-full bg-white shadow-sm" />
-              </button>
-            </div>
-
-            <div className="flex items-center justify-between">
-              <div className="flex flex-col">
-                <span className="text-[10px] font-bold text-neutral-700">Notificações Sonoras</span>
-                <span className="text-[9px] text-neutral-400">Alertas de novas mensagens</span>
-              </div>
-              <button
-                onClick={() => setSoundAlerts(!soundAlerts)}
-                className={`w-9 h-5 rounded-full p-0.5 transition-all duration-200 flex items-center ${
-                  soundAlerts ? "bg-blue-600 justify-end" : "bg-neutral-200 justify-start"
-                }`}
-              >
-                <span className="w-4 h-4 rounded-full bg-white shadow-sm" />
+                <X className="w-5 h-5" />
               </button>
             </div>
 
             <hr className="border-neutral-100" />
 
-            <div className="bg-neutral-50 rounded-lg p-2.5 flex flex-col gap-1.5 text-[9px] text-neutral-500">
-              <div className="flex justify-between">
-                <span>ID do Agente:</span>
-                <span className="font-semibold text-neutral-700">{me?.id || "---"}</span>
+            <form onSubmit={handleAddMacro} className="flex flex-col gap-3">
+              <div className="flex flex-col gap-1">
+                <label className="text-[10px] font-bold text-neutral-500 uppercase">Novo Atalho</label>
+                <div className="relative flex items-center">
+                  <span className="absolute left-2.5 text-neutral-400 font-bold text-xs select-none">/</span>
+                  <input
+                    type="text"
+                    placeholder="ex: pix, saudacao"
+                    value={newShortcut}
+                    onChange={(e) => setNewShortcut(e.target.value)}
+                    className="w-full bg-neutral-100 rounded-lg pl-5 pr-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all border border-transparent"
+                    required
+                  />
+                </div>
               </div>
-              <div className="flex justify-between">
-                <span>Conexão API:</span>
-                <span className="font-semibold text-green-600 flex items-center gap-0.5">
-                  <span className="w-1 h-1 rounded-full bg-green-500 animate-ping" />
-                  Ativa
-                </span>
+
+              <div className="flex flex-col gap-1">
+                <label className="text-[10px] font-bold text-neutral-500 uppercase">Texto da Resposta</label>
+                <textarea
+                  placeholder="Digite a mensagem rápida..."
+                  value={newText}
+                  onChange={(e) => setNewText(e.target.value)}
+                  className="w-full bg-neutral-100 rounded-lg p-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all border border-transparent resize-none h-16"
+                  required
+                />
               </div>
-              <div className="flex justify-between">
-                <span>Versão do App:</span>
-                <span className="font-semibold text-neutral-700">v1.0.0</span>
+
+              <button
+                type="submit"
+                className="w-full py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold transition-all active:scale-95 cursor-pointer shadow-xs"
+              >
+                Adicionar Macro
+              </button>
+            </form>
+
+            <hr className="border-neutral-100" />
+
+            <div className="flex flex-col gap-2 flex-1 max-h-48 overflow-y-auto pr-1">
+              <span className="text-[10px] font-bold text-neutral-500 uppercase">Atalhos Ativos ({macros.length})</span>
+              {macros.length === 0 ? (
+                <p className="text-center text-xs text-neutral-400 py-4">Nenhum atalho configurado.</p>
+              ) : (
+                <div className="flex flex-col gap-1.5">
+                  {macros.map((macro) => (
+                    <div key={macro.id} className="flex items-center justify-between gap-3 p-2 bg-neutral-50 rounded-lg border border-neutral-100 text-xs">
+                      <div className="min-w-0 flex-1">
+                        <p className="font-bold text-blue-600">/{macro.shortcut}</p>
+                        <p className="text-neutral-500 truncate mt-0.5">{macro.text}</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteMacro(macro.id)}
+                        className="p-1 rounded-lg text-neutral-400 hover:bg-red-50 hover:text-red-500 transition-colors cursor-pointer"
+                        title="Excluir atalho"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showChatSettingsModal && (
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-200" onClick={() => setShowChatSettingsModal(false)}>
+          <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl p-5 flex flex-col gap-4 animate-in zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
+            <div className="flex justify-between items-center">
+              <div>
+                <h3 className="font-bold text-neutral-800 text-sm uppercase tracking-wide">
+                  Configurações do Chat
+                </h3>
+                <p className="text-[10px] text-neutral-400">Personalize a sua experiência de atendimento</p>
+              </div>
+              <button
+                onClick={() => setShowChatSettingsModal(false)}
+                className="p-1 rounded-full hover:bg-neutral-150 text-neutral-400 hover:text-neutral-600 transition-all cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <hr className="border-neutral-100" />
+
+            <div className="flex flex-col gap-4">
+              <div className="flex items-center justify-between">
+                <div className="flex flex-col">
+                  <span className="text-xs font-bold text-neutral-700">Pressionar Enter para Enviar</span>
+                  <span className="text-[10px] text-neutral-400">Use Enter para enviar e Shift+Enter para quebra de linha</span>
+                </div>
+                <button
+                  onClick={() => setEnterToSendSetting(!enterToSendSetting)}
+                  className={`w-9 h-5 rounded-full p-0.5 transition-all duration-200 flex items-center ${
+                    enterToSendSetting ? "bg-blue-600 justify-end" : "bg-neutral-200 justify-start"
+                  }`}
+                >
+                  <span className="w-4 h-4 rounded-full bg-white shadow-sm" />
+                </button>
+              </div>
+
+              <div className="flex items-center justify-between">
+                <div className="flex flex-col">
+                  <span className="text-xs font-bold text-neutral-700">Copiloto de IA</span>
+                  <span className="text-[10px] text-neutral-400">Habilitar painel de respostas automáticas sugeridas</span>
+                </div>
+                <button
+                  onClick={() => setAiEnabled(!aiEnabled)}
+                  className={`w-9 h-5 rounded-full p-0.5 transition-all duration-200 flex items-center ${
+                    aiEnabled ? "bg-blue-600 justify-end" : "bg-neutral-200 justify-start"
+                  }`}
+                >
+                  <span className="w-4 h-4 rounded-full bg-white shadow-sm" />
+                </button>
+              </div>
+
+              <div className="flex items-center justify-between">
+                <div className="flex flex-col">
+                  <span className="text-xs font-bold text-neutral-700">Notificações Sonoras</span>
+                  <span className="text-[10px] text-neutral-400">Reproduzir aviso sonoro para novas mensagens</span>
+                </div>
+                <button
+                  onClick={() => setSoundAlerts(!soundAlerts)}
+                  className={`w-9 h-5 rounded-full p-0.5 transition-all duration-200 flex items-center ${
+                    soundAlerts ? "bg-blue-600 justify-end" : "bg-neutral-200 justify-start"
+                  }`}
+                >
+                  <span className="w-4 h-4 rounded-full bg-white shadow-sm" />
+                </button>
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <span className="text-xs font-bold text-neutral-700">Tema do Fundo do Chat</span>
+                <div className="grid grid-cols-4 gap-2">
+                  {[
+                    { name: "Clássico", color: "#EFEAE2" },
+                    { name: "Cinza", color: "#f5f5f5" },
+                    { name: "Slate", color: "#e2e8f0" },
+                    { name: "Sky", color: "#f0f9ff" }
+                  ].map((theme) => (
+                    <button
+                      key={theme.color}
+                      onClick={() => {
+                        localStorage.setItem("myde_chat_bg", theme.color);
+                        window.dispatchEvent(new Event("myde_settings_changed"));
+                      }}
+                      className={`p-2 rounded-lg border text-[10px] font-semibold flex flex-col items-center gap-1.5 transition-all hover:bg-neutral-50 cursor-pointer ${
+                        localStorage.getItem("myde_chat_bg") === theme.color || (!localStorage.getItem("myde_chat_bg") && theme.color === "#EFEAE2")
+                          ? "border-blue-600 ring-2 ring-blue-500/10 font-bold"
+                          : "border-neutral-200"
+                      }`}
+                    >
+                      <div className="w-5 h-5 rounded-full border border-neutral-300" style={{ backgroundColor: theme.color }} />
+                      {theme.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <hr className="border-neutral-100" />
+
+              <div className="flex flex-col gap-2">
+                <span className="text-[10px] font-bold text-neutral-500 uppercase">Ações do Chat</span>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => {
+                      if (window.confirm("Deseja mesmo restaurar todos os chats arquivados, fixados e ocultados?")) {
+                        resetPreferences();
+                        alert("Todos os chats foram restaurados com sucesso!");
+                        window.location.reload();
+                      }
+                    }}
+                    className="flex-1 py-2 bg-neutral-100 hover:bg-neutral-200 text-neutral-700 text-xs font-bold rounded-lg transition-all active:scale-95 cursor-pointer text-center"
+                  >
+                    Restaurar Chats
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (window.confirm("Deseja limpar todas as configurações (macros, preferências, etc.)? Isso restaurará os padrões.")) {
+                        localStorage.clear();
+                        alert("Todas as configurações foram limpas!");
+                        window.location.reload();
+                      }
+                    }}
+                    className="flex-1 py-2 bg-red-50 hover:bg-red-100 text-red-600 text-xs font-bold rounded-lg transition-all active:scale-95 cursor-pointer text-center"
+                  >
+                    Limpar Tudo
+                  </button>
+                </div>
               </div>
             </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </aside>
   );
 }

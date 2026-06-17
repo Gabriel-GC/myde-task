@@ -107,6 +107,78 @@ export function ChatArea({ conversationId }: { conversationId: string }) {
     return true;
   });
 
+  const [macros, setMacros] = useState<Array<{ id: string; shortcut: string; text: string }>>([]);
+  const [activeMacroIndex, setActiveMacroIndex] = useState(0);
+
+  useEffect(() => {
+    const loadMacros = () => {
+      const saved = localStorage.getItem("myde_macros");
+      if (saved) {
+        setMacros(JSON.parse(saved));
+      } else {
+        const defaults = [
+          { id: "1", shortcut: "saudacao", text: "Olá! Seja muito bem-vindo ao suporte da Myde. Como posso ajudar você hoje?" },
+          { id: "2", shortcut: "pix", text: "Nossa chave PIX CNPJ é: 12.345.678/0001-90. Após realizar o pagamento, envie o comprovante por aqui!" },
+          { id: "3", shortcut: "suporte", text: "Seu caso foi encaminhado para nossa equipe técnica de segundo nível. Entraremos em contato em até 2 horas." },
+          { id: "4", shortcut: "obrigado", text: "Muito obrigado pelo contato! Se precisar de mais alguma coisa, ficamos à inteira disposição. Tenha um ótimo dia!" }
+        ];
+        localStorage.setItem("myde_macros", JSON.stringify(defaults));
+        setMacros(defaults);
+      }
+    };
+    loadMacros();
+    window.addEventListener("myde_macros_changed", loadMacros);
+    return () => window.removeEventListener("myde_macros_changed", loadMacros);
+  }, []);
+
+  const getMacroQuery = (text: string) => {
+    const match = text.match(/(?:^|\s)\/([a-zA-Z0-9]*)$/);
+    return match ? match[1] : null;
+  };
+
+  const handleSelectMacro = (macroText: string) => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+    const text = draft;
+    const match = text.match(/(?:^|\s)\/([a-zA-Z0-9]*)$/);
+    if (match && match.index !== undefined) {
+      const slashIndex = text.lastIndexOf("/", textarea.selectionStart || text.length);
+      if (slashIndex !== -1) {
+        const before = text.substring(0, slashIndex);
+        const after = text.substring(textarea.selectionStart || text.length);
+        const newText = before + macroText + after;
+        updateDraft(newText);
+        setTimeout(() => {
+          textarea.focus();
+          const newCursorPos = before.length + macroText.length;
+          textarea.setSelectionRange(newCursorPos, newCursorPos);
+        }, 0);
+      }
+    }
+  };
+
+  const query = getMacroQuery(draft);
+  const filteredMacros = query !== null
+    ? macros.filter(macro => macro.shortcut.toLowerCase().includes(query.toLowerCase()))
+    : [];
+
+  useEffect(() => {
+    setActiveMacroIndex(0);
+  }, [filteredMacros.length]);
+
+  const [enterToSend, setEnterToSend] = useState(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("myde_enter_to_send") !== "false";
+    }
+    return true;
+  });
+  const [chatBg, setChatBg] = useState(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("myde_chat_bg") || "#EFEAE2";
+    }
+    return "#EFEAE2";
+  });
+
   useEffect(() => {
     const updateSettings = () => {
       const ai = localStorage.getItem("myde_ai_enabled") !== "false";
@@ -115,6 +187,8 @@ export function ChatArea({ conversationId }: { conversationId: string }) {
         setAiSuggestion(null);
       }
       setSoundAlerts(localStorage.getItem("myde_sound_alerts") !== "false");
+      setEnterToSend(localStorage.getItem("myde_enter_to_send") !== "false");
+      setChatBg(localStorage.getItem("myde_chat_bg") || "#EFEAE2");
     };
     window.addEventListener("myde_settings_changed", updateSettings);
     return () => window.removeEventListener("myde_settings_changed", updateSettings);
@@ -150,6 +224,7 @@ export function ChatArea({ conversationId }: { conversationId: string }) {
     setCurrentMatchIndex(0);
     setIsMultiLine(false);
     lastMsgIdRef.current = null;
+    setActiveMacroIndex(0);
   }
 
   useEffect(() => {
@@ -318,7 +393,7 @@ export function ChatArea({ conversationId }: { conversationId: string }) {
   }
 
   return (
-    <div className="flex-1 flex flex-col h-full bg-[#EFEAE2] relative">
+    <div className="flex-1 flex flex-col h-full relative" style={{ backgroundColor: chatBg }}>
       {showEmojiPicker && (
         <div
           className="fixed inset-0 z-30 cursor-default"
@@ -594,6 +669,30 @@ export function ChatArea({ conversationId }: { conversationId: string }) {
             </div>
           )}
 
+          {filteredMacros.length > 0 && (
+            <div className="absolute bottom-[calc(100%+8px)] left-3 right-3 sm:left-4 sm:right-auto sm:w-96 bg-white rounded-2xl shadow-2xl border border-neutral-200/80 p-2 z-40 animate-in fade-in slide-in-from-bottom-2 duration-150 flex flex-col gap-1 max-h-60 overflow-y-auto">
+              {filteredMacros.map((macro, idx) => (
+                <button
+                  key={macro.id}
+                  type="button"
+                  onClick={() => handleSelectMacro(macro.text)}
+                  className={`w-full text-left px-3 py-2 rounded-xl text-xs transition-all flex flex-col gap-0.5 cursor-pointer ${
+                    idx === activeMacroIndex
+                      ? "bg-blue-600 text-white font-semibold"
+                      : "hover:bg-neutral-100 text-neutral-800"
+                  }`}
+                >
+                  <span className={`font-bold ${idx === activeMacroIndex ? "text-white" : "text-blue-600"}`}>
+                    /{macro.shortcut}
+                  </span>
+                  <span className={`truncate w-full text-[10px] ${idx === activeMacroIndex ? "text-blue-100" : "text-neutral-500"}`}>
+                    {macro.text}
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
+
           {attachment && (
             <div className="mb-3.5 p-3 bg-neutral-50 rounded-xl border border-neutral-200 flex items-center justify-between gap-3 animate-in slide-in-from-bottom-2 duration-200">
               <div className="flex items-center gap-3 min-w-0">
@@ -713,9 +812,35 @@ export function ChatArea({ conversationId }: { conversationId: string }) {
               value={draft}
               onChange={(e) => updateDraft(e.target.value)}
               onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey) {
-                  e.preventDefault();
-                  handleSend();
+                if (filteredMacros.length > 0) {
+                  if (e.key === "ArrowDown") {
+                    e.preventDefault();
+                    setActiveMacroIndex((prev) => (prev + 1) % filteredMacros.length);
+                    return;
+                  }
+                  if (e.key === "ArrowUp") {
+                    e.preventDefault();
+                    setActiveMacroIndex((prev) => (prev - 1 + filteredMacros.length) % filteredMacros.length);
+                    return;
+                  }
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    handleSelectMacro(filteredMacros[activeMacroIndex].text);
+                    return;
+                  }
+                }
+                if (e.key === "Enter") {
+                  if (enterToSend) {
+                    if (!e.shiftKey) {
+                      e.preventDefault();
+                      handleSend();
+                    }
+                  } else {
+                    if (e.ctrlKey || e.metaKey) {
+                      e.preventDefault();
+                      handleSend();
+                    }
+                  }
                 }
               }}
               placeholder={attachment ? "Escreva uma legenda..." : "Digite sua mensagem..."}
@@ -741,10 +866,10 @@ export function ChatArea({ conversationId }: { conversationId: string }) {
               <button
                 type="submit"
                 disabled={!draft.trim() && !attachment}
-                className="w-14 h-10 bg-blue-600 hover:bg-blue-700 disabled:bg-neutral-200 text-white disabled:text-neutral-400 rounded-full transition-all flex items-center justify-center cursor-pointer active:scale-95 shrink-0 shadow-xs"
+                className="w-10 h-10 bg-blue-600 hover:bg-blue-700 disabled:bg-neutral-200 text-white disabled:text-neutral-400 rounded-full transition-all flex items-center justify-center cursor-pointer active:scale-95 shrink-0 shadow-xs"
                 title="Enviar"
               >
-                <Send className="w-6 h-6" />
+                <Send className="w-4 h-4" />
               </button>
             </div>
 

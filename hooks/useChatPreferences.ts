@@ -41,5 +41,14 @@ export function useChatPreferences() {
     }
   };
 
-  return { deletedIds, pinnedIds, archivedIds, toggleAction };
+  const resetPreferences = () => {
+    setDeletedIds([]);
+    setPinnedIds([]);
+    setArchivedIds([]);
+    localStorage.removeItem("deletedChats");
+    localStorage.removeItem("pinnedChats");
+    localStorage.removeItem("archivedChats");
+  };
+
+  return { deletedIds, pinnedIds, archivedIds, toggleAction, resetPreferences };
 }
