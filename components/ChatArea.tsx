@@ -74,6 +74,7 @@ export function ChatArea({ conversationId }: { conversationId: string }) {
 
   const [showSearch, setShowSearch] = useState(false);
   const [isMultiLine, setIsMultiLine] = useState(false);
+  const [textareaRows, setTextareaRows] = useState(1);
 
   useEffect(() => {
     if (showSearch) {
@@ -88,8 +89,15 @@ export function ChatArea({ conversationId }: { conversationId: string }) {
     if (textarea) {
       textarea.style.height = "auto";
       const sh = textarea.scrollHeight;
-      textarea.style.height = `${Math.max(36, Math.min(sh, 128))}px`;
+      const isMobile = typeof window !== "undefined" && window.innerWidth < 768;
+      const maxHeight = isMobile ? 76 : 128;
+      textarea.style.height = `${Math.max(36, Math.min(sh, maxHeight))}px`;
       setIsMultiLine(sh > 40 || draft.includes("\n"));
+      if (isMobile && draft.trim().length > 0 && sh > 72) {
+        setTextareaRows(3);
+      } else {
+        setTextareaRows(1);
+      }
     }
   }, [draft, conversationId]);
   const [chatSearchQuery, setChatSearchQuery] = useState("");
@@ -954,7 +962,7 @@ export function ChatArea({ conversationId }: { conversationId: string }) {
 
         <div className=" mx-auto w-full relative">
           {showEmojiPicker && (
-            <div className="absolute bottom-[calc(100%+8px)] left-3 right-3 sm:left-4 sm:right-auto sm:w-72 bg-white rounded-2xl shadow-2xl border border-neutral-100 p-3 z-40 animate-in fade-in slide-in-from-bottom-2 duration-150">
+            <div className="absolute bottom-[calc(100%+8px)] left-3 right-3 sm:left-4 sm:right-auto sm:w-72 bg-white rounded-2xl shadow-2xl border border-neutral-100 p-2 z-40 animate-in fade-in slide-in-from-bottom-2 duration-150">
               <div className="grid grid-cols-8 gap-1.5">
                 {EMOJIS.map((emoji) => (
                   <button
@@ -1097,7 +1105,7 @@ export function ChatArea({ conversationId }: { conversationId: string }) {
               <button
                 type="button"
                 onClick={handleToggleBlock}
-                className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap active:scale-95"
+                className="w-full px-3 py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap active:scale-95"
               >
                 Desbloquear Contato
               </button>
@@ -1118,7 +1126,7 @@ export function ChatArea({ conversationId }: { conversationId: string }) {
                   window.dispatchEvent(new Event("myde_settings_changed"));
                   showToast("Atendimento atribuído a você!", "success");
                 }}
-                className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap active:scale-95"
+                className="w-full px-3 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap active:scale-95"
               >
                 Atribuir a mim
               </button>
@@ -1130,6 +1138,36 @@ export function ChatArea({ conversationId }: { conversationId: string }) {
                 <div>
                   <p className="text-xs font-bold text-neutral-900">Atendimento Finalizado</p>
                   <p className="text-[10px] text-neutral-500 mt-0.5">Esta conversa foi finalizada e está em modo de leitura.</p>
+                  {(() => {
+                    const stored = typeof window !== "undefined" ? localStorage.getItem(`myde_chat_finished_info_${conversationId}`) : null;
+                    let finishedAt = chatInfo?.lastMessageAt || new Date().toISOString();
+                    let finishedBy = "Atendente myde";
+                    if (stored) {
+                      try {
+                        const parsed = JSON.parse(stored);
+                        finishedAt = parsed.finishedAt;
+                        finishedBy = parsed.finishedBy;
+                      } catch {}
+                    }
+                    const formatFinishedDateTime = (isoString: string) => {
+                      try {
+                        const date = new Date(isoString);
+                        const day = String(date.getDate()).padStart(2, "0");
+                        const month = String(date.getMonth() + 1).padStart(2, "0");
+                        const year = date.getFullYear();
+                        const hours = String(date.getHours()).padStart(2, "0");
+                        const minutes = String(date.getMinutes()).padStart(2, "0");
+                        return `${day}/${month}/${year} às ${hours}:${minutes}`;
+                      } catch {
+                        return "";
+                      }
+                    };
+                    return (
+                      <p className="text-[10px] text-neutral-450 mt-1 font-semibold">
+                        Finalizado em {formatFinishedDateTime(finishedAt)} por {finishedBy}
+                      </p>
+                    );
+                  })()}
                 </div>
               </div>
               <button
@@ -1139,7 +1177,7 @@ export function ChatArea({ conversationId }: { conversationId: string }) {
                   window.dispatchEvent(new Event("myde_settings_changed"));
                   showToast("Atendimento reaberto!", "success");
                 }}
-                className="px-3 py-1.5 bg-neutral-800 hover:bg-neutral-900 text-white rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap active:scale-95"
+                className="w-full px-3 py-3 bg-neutral-800 hover:bg-neutral-900 text-white rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap active:scale-95"
               >
                 Reabrir Atendimento
               </button>
@@ -1147,7 +1185,7 @@ export function ChatArea({ conversationId }: { conversationId: string }) {
           ) : (
             <form
               onSubmit={handleSend}
-              className={`w-full flex flex-col md:flex-row md:items-end md:gap-2 bg-neutral-50/80 border border-neutral-200/60 p-3 md:p-4 transition-all duration-300 focus-within:bg-white focus-within:border-blue-400/50 focus-within:ring-2 focus-within:ring-blue-500/10 ${
+              className={`w-full flex flex-col md:flex-row md:items-end md:gap-2 bg-neutral-50/80 border border-neutral-200/60 p-2 md:p-2 transition-all duration-300 focus-within:bg-white focus-within:border-blue-400/50 focus-within:ring-2 focus-within:ring-blue-500/10 ${
                 isMultiLine ? "rounded-2xl" : "rounded-3xl md:rounded-full"
               }`}
             >
@@ -1172,7 +1210,7 @@ export function ChatArea({ conversationId }: { conversationId: string }) {
 
               <textarea
                 ref={textareaRef}
-                rows={1}
+                rows={textareaRows}
                 value={draft}
                 onChange={(e) => updateDraft(e.target.value)}
                 placeholder="Digite uma mensagem..."

@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useConversations, useMe } from "@/hooks/useApi";
 import { useChatPreferences } from "@/hooks/useChatPreferences";
 import { Conversation } from "@/lib/api";
-import { MessageSquare, Search, X, Pin, Camera, Paperclip, MoreVertical, Archive, ArchiveRestore, Trash2, Settings, Menu, BellOff, Ban, Users, CheckCircle2, UserPlus } from "lucide-react";
+import { MessageSquare, Search, X, Pin, Camera, Paperclip, MoreVertical, Archive, ArchiveRestore, Trash2, Settings, Menu, BellOff, Ban, Users, CheckCircle2, UserPlus, LogOut } from "lucide-react";
 
 interface SidebarProps {
   activeId: string | null;
@@ -549,6 +549,16 @@ export function Sidebar({ activeId, onSelect }: SidebarProps) {
                     Limpar Tudo
                   </button>
                 </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    showToast("Função de logout não implementada nesta versão demonstrativa.", "info");
+                  }}
+                  className="w-full mt-2 py-2 bg-red-50/40 hover:bg-red-100/50 text-red-600 hover:text-red-700 text-xs font-bold rounded-xl transition-all active:scale-[0.97] cursor-pointer text-center border border-red-100/50 flex items-center justify-center gap-2"
+                >
+                  <LogOut className="w-4 h-4" />
+                  <span>Sair da Conta</span>
+                </button>
               </div>
             </div>
           </div>
@@ -738,44 +748,6 @@ export function Sidebar({ activeId, onSelect }: SidebarProps) {
                         )
                       )}
                     </div>
-                    {activeTab === "finished" && (() => {
-                      const getFinishedInfo = () => {
-                        if (typeof window !== "undefined") {
-                          const stored = localStorage.getItem(`myde_chat_finished_info_${chat.id}`);
-                          if (stored) {
-                            try {
-                              return JSON.parse(stored);
-                            } catch {}
-                          }
-                        }
-                        return {
-                          finishedAt: chat.lastMessageAt,
-                          finishedBy: "Atendente myde"
-                        };
-                      };
-                      const finishedInfo = getFinishedInfo();
-                      const formatFinishedDateTime = (isoString: string) => {
-                        try {
-                          const date = new Date(isoString);
-                          const day = String(date.getDate()).padStart(2, "0");
-                          const month = String(date.getMonth() + 1).padStart(2, "0");
-                          const year = date.getFullYear();
-                          const hours = String(date.getHours()).padStart(2, "0");
-                          const minutes = String(date.getMinutes()).padStart(2, "0");
-                          return `${day}/${month}/${year} às ${hours}:${minutes}`;
-                        } catch {
-                          return "";
-                        }
-                      };
-                      return (
-                        <div className="text-[10px] text-neutral-400 mt-1.5 flex items-center gap-1 border-t border-neutral-100 pt-1.5 font-medium">
-                          <CheckCircle2 className="w-3 h-3 text-emerald-500 shrink-0" />
-                          <span className="truncate">
-                            Finalizado em {formatFinishedDateTime(finishedInfo.finishedAt)} por {finishedInfo.finishedBy}
-                          </span>
-                        </div>
-                      );
-                    })()}
                   </div>
 
                   <div className="shrink-0 relative z-40">
@@ -798,7 +770,7 @@ export function Sidebar({ activeId, onSelect }: SidebarProps) {
 
                     {activeMenuId === chat.id && (
                       <div
-                        className="absolute right-0 top-7 w-44 bg-white rounded-xl shadow-lg border border-neutral-100 py-1.5 z-50 flex flex-col gap-0.5 animate-in fade-in slide-in-from-top-2 duration-150"
+                        className="absolute right-0 max-md:right-[24px] max-md:top-[15px]  max-md:top-[15px] top-7 w-44 bg-white rounded-xl shadow-lg border border-neutral-100 py-1.5 z-50 flex flex-col gap-0.5 animate-in fade-in slide-in-from-top-2 duration-150"
                         onClick={(e) => e.stopPropagation()}
                       >
                         <button
