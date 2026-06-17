@@ -9,7 +9,7 @@ import {
   useMe,
 } from "@/hooks/useApi";
 import { useDraft } from "@/hooks/useDraft";
-import { Search, ChevronLeft, ChevronRight, X, Check, CheckCheck, MessageSquare, FileDown, Zap, Sparkles, Copy, Smile, Paperclip, Send, Pencil, UserPlus, MoreVertical, BellOff, Ban } from "lucide-react";
+import { Search, ChevronLeft, ChevronRight, X, Check, CheckCheck, MessageSquare, FileDown, Zap, Sparkles, Copy, Smile, Paperclip, Send, Pencil, UserPlus, MoreVertical, BellOff, Ban, Users, CheckCircle2 } from "lucide-react";
 
 const EMOJIS = [
   "😊", "😂", "🤣", "😍", "🥰", "😎", "😉", "😅",
@@ -275,12 +275,35 @@ export function ChatArea({ conversationId }: { conversationId: string }) {
   });
   const [isBlocked, setIsBlocked] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
+  const [chatStatus, setChatStatus] = useState("active");
 
   useEffect(() => {
     if (typeof window !== "undefined") {
       setIsBlocked(localStorage.getItem(`myde_blocked_${conversationId}`) === "true");
       setIsMuted(localStorage.getItem(`myde_muted_${conversationId}`) === "true");
     }
+  }, [conversationId]);
+
+  useEffect(() => {
+    const updateChatStatus = () => {
+      if (typeof window !== "undefined") {
+        const stored = localStorage.getItem(`myde_chat_status_${conversationId}`);
+        if (stored) {
+          setChatStatus(stored);
+        } else {
+          if (conversationId === "c-1003") {
+            setChatStatus("unassigned");
+          } else if (conversationId === "c-1004") {
+            setChatStatus("finished");
+          } else {
+            setChatStatus("active");
+          }
+        }
+      }
+    };
+    updateChatStatus();
+    window.addEventListener("myde_settings_changed", updateChatStatus);
+    return () => window.removeEventListener("myde_settings_changed", updateChatStatus);
   }, [conversationId]);
   useEffect(() => {
     const updateSettings = () => {
@@ -584,6 +607,56 @@ export function ChatArea({ conversationId }: { conversationId: string }) {
                   <UserPlus className="w-4 h-4 text-neutral-400" />
                   <span>Transferir Atendimento</span>
                 </button>
+                {chatStatus === "active" && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      localStorage.setItem(`myde_chat_status_${conversationId}`, "finished");
+                      const finishedAt = new Date().toISOString();
+                      const finishedBy = me?.name || "Atendente myde";
+                      localStorage.setItem(`myde_chat_finished_info_${conversationId}`, JSON.stringify({ finishedAt, finishedBy }));
+                      window.dispatchEvent(new Event("myde_settings_changed"));
+                      showToast("Atendimento finalizado!", "success");
+                      setShowActionsMenu(false);
+                    }}
+                    className="w-full text-left px-3 py-2 rounded-lg text-xs font-semibold text-neutral-700 hover:bg-neutral-50 transition-colors flex items-center gap-2 cursor-pointer"
+                  >
+                    <CheckCircle2 className="w-4 h-4 text-neutral-400" />
+                    <span>Finalizar Atendimento</span>
+                  </button>
+                )}
+                {chatStatus === "unassigned" && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      localStorage.setItem(`myde_chat_status_${conversationId}`, "active");
+                      localStorage.removeItem(`myde_chat_finished_info_${conversationId}`);
+                      window.dispatchEvent(new Event("myde_settings_changed"));
+                      showToast("Atendimento atribuído a você!", "success");
+                      setShowActionsMenu(false);
+                    }}
+                    className="w-full text-left px-3 py-2 rounded-lg text-xs font-semibold text-neutral-700 hover:bg-neutral-50 transition-colors flex items-center gap-2 cursor-pointer"
+                  >
+                    <UserPlus className="w-4 h-4 text-neutral-400" />
+                    <span>Atribuir a mim</span>
+                  </button>
+                )}
+                {chatStatus === "finished" && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      localStorage.setItem(`myde_chat_status_${conversationId}`, "active");
+                      localStorage.removeItem(`myde_chat_finished_info_${conversationId}`);
+                      window.dispatchEvent(new Event("myde_settings_changed"));
+                      showToast("Atendimento reaberto!", "success");
+                      setShowActionsMenu(false);
+                    }}
+                    className="w-full text-left px-3 py-2 rounded-lg text-xs font-semibold text-neutral-700 hover:bg-neutral-50 transition-colors flex items-center gap-2 cursor-pointer"
+                  >
+                    <MessageSquare className="w-4 h-4 text-neutral-400" />
+                    <span>Reabrir Atendimento</span>
+                  </button>
+                )}
                 <hr className="border-neutral-100 my-0.5" />
                 <button
                   type="button"
@@ -1013,41 +1086,85 @@ export function ChatArea({ conversationId }: { conversationId: string }) {
           )}
 
           {isBlocked ? (
-            <div className="bg-red-50 border border-red-200 rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-3 text-red-800 animate-in fade-in slide-in-from-bottom-2 duration-200">
-              <div className="flex items-center gap-2.5">
+            <div className="bg-red-50 border border-red-200 rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-3 text-red-805 text-left">
+              <div className="flex items-center gap-3">
                 <Ban className="w-5 h-5 text-red-500 shrink-0" />
-                <div className="text-left">
-                  <p className="text-sm font-semibold">Contato Bloqueado</p>
-                  <p className="text-xs text-red-600/90">Você não pode enviar mensagens para este contato enquanto ele estiver bloqueado.</p>
+                <div>
+                  <p className="text-xs font-bold text-red-900">Contato Bloqueado</p>
+                  <p className="text-[10px] text-red-600 mt-0.5">Você não pode enviar mensagens para contatos bloqueados.</p>
                 </div>
               </div>
               <button
                 type="button"
                 onClick={handleToggleBlock}
-                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold transition-all active:scale-95 shadow-sm shrink-0 cursor-pointer"
+                className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap active:scale-95"
               >
                 Desbloquear Contato
               </button>
             </div>
+          ) : chatStatus === "unassigned" ? (
+            <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-3 text-blue-805 text-left">
+              <div className="flex items-center gap-3">
+                <Users className="w-5 h-5 text-blue-500 shrink-0" />
+                <div>
+                  <p className="text-xs font-bold text-blue-900">Conversa Não Atribuída</p>
+                  <p className="text-[10px] text-blue-600 mt-0.5">Esta conversa ainda não foi atribuída a nenhum atendente.</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  localStorage.setItem(`myde_chat_status_${conversationId}`, "active");
+                  window.dispatchEvent(new Event("myde_settings_changed"));
+                  showToast("Atendimento atribuído a você!", "success");
+                }}
+                className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap active:scale-95"
+              >
+                Atribuir a mim
+              </button>
+            </div>
+          ) : chatStatus === "finished" ? (
+            <div className="bg-neutral-50 border border-neutral-200 rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-3 text-neutral-805 text-left">
+              <div className="flex items-center gap-3">
+                <CheckCircle2 className="w-5 h-5 text-neutral-500 shrink-0" />
+                <div>
+                  <p className="text-xs font-bold text-neutral-900">Atendimento Finalizado</p>
+                  <p className="text-[10px] text-neutral-500 mt-0.5">Esta conversa foi finalizada e está em modo de leitura.</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  localStorage.setItem(`myde_chat_status_${conversationId}`, "active");
+                  window.dispatchEvent(new Event("myde_settings_changed"));
+                  showToast("Atendimento reaberto!", "success");
+                }}
+                className="px-3 py-1.5 bg-neutral-800 hover:bg-neutral-900 text-white rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap active:scale-95"
+              >
+                Reabrir Atendimento
+              </button>
+            </div>
           ) : (
-            <form onSubmit={handleSend} className={`bg-neutral-50/80 border border-neutral-200/60 p-2 flex flex-col md:flex-row md:items-end gap-1.5 md:gap-2 shadow-inner focus-within:bg-white focus-within:border-blue-400/50 focus-within:ring-2 focus-within:ring-blue-500/10 transition-all duration-200 ${isMultiLine ? "rounded-2xl" : "rounded-3xl md:rounded-full"}`}>
-              <div className="hidden md:flex items-center gap-1 md:mb-1">
+            <form
+              onSubmit={handleSend}
+              className={`w-full flex flex-col md:flex-row md:items-end md:gap-2 bg-neutral-50/80 border border-neutral-200/60 p-3 md:p-4 transition-all duration-300 focus-within:bg-white focus-within:border-blue-400/50 focus-within:ring-2 focus-within:ring-blue-500/10 ${
+                isMultiLine ? "rounded-2xl" : "rounded-3xl md:rounded-full"
+              }`}
+            >
+              <div className="hidden md:flex items-center gap-1.5 pb-0.5">
                 <button
                   type="button"
                   onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-                  className={`p-1.5 rounded-lg text-neutral-400 hover:bg-neutral-200/50 hover:text-neutral-600 transition-colors shrink-0 ${
-                    showEmojiPicker ? "bg-neutral-200/50 text-neutral-600" : ""
-                  }`}
-                  title="Emojis"
+                  className="p-2 text-neutral-400 hover:text-neutral-600 hover:bg-neutral-200/50 rounded-full transition-colors cursor-pointer"
+                  title="Inserir emoji"
                 >
                   <Smile className="w-5 h-5" />
                 </button>
-
                 <button
                   type="button"
                   onClick={handleAttachmentClick}
-                  className="p-1.5 rounded-lg text-neutral-400 hover:bg-neutral-200/50 hover:text-neutral-600 transition-colors shrink-0 active:scale-95"
-                  title="Adicionar anexo"
+                  className="p-2 text-neutral-400 hover:text-neutral-600 hover:bg-neutral-200/50 rounded-full transition-colors cursor-pointer"
+                  title="Anexar arquivo"
                 >
                   <Paperclip className="w-5 h-5" />
                 </button>
@@ -1055,8 +1172,11 @@ export function ChatArea({ conversationId }: { conversationId: string }) {
 
               <textarea
                 ref={textareaRef}
+                rows={1}
                 value={draft}
                 onChange={(e) => updateDraft(e.target.value)}
+                placeholder="Digite uma mensagem..."
+                className="flex-1 bg-transparent border-0 focus:ring-0 text-sm py-1.5 focus:outline-none resize-none max-h-32 text-neutral-800 placeholder-neutral-400"
                 onKeyDown={(e) => {
                   if (filteredMacros.length > 0) {
                     if (e.key === "ArrowDown") {
@@ -1074,99 +1194,81 @@ export function ChatArea({ conversationId }: { conversationId: string }) {
                       handleSelectMacro(filteredMacros[activeMacroIndex].text);
                       return;
                     }
+                    if (e.key === "Escape") {
+                      e.preventDefault();
+                      updateDraft(draft.replace(/\/([a-zA-Z0-9]*)$/, ""));
+                      return;
+                    }
                   }
-                  if (e.key === "Enter") {
+                  if (e.key === "Enter" && !e.shiftKey) {
                     if (enterToSend) {
-                      if (!e.shiftKey) {
-                        e.preventDefault();
-                        handleSend();
-                      }
-                    } else {
-                      if (e.ctrlKey || e.metaKey) {
-                        e.preventDefault();
-                        handleSend();
-                      }
+                      e.preventDefault();
+                      handleSend();
                     }
                   }
                 }}
-                placeholder={attachment ? "Escreva uma legenda..." : "Digite sua mensagem..."}
-                className="w-full md:flex-1 bg-transparent text-sm focus:outline-none resize-none px-2 py-1 min-h-[36px] max-h-32 text-neutral-800 overflow-y-auto"
-                rows={1}
               />
-              
-              <div className="hidden md:flex items-center gap-2 md:mb-0 shrink-0">
+
+              <div className="hidden md:flex items-center gap-1.5 pb-0.5">
                 {aiEnabled && (
                   <button
                     type="button"
                     onClick={handleAiSuggest}
                     disabled={isSuggesting}
-                    className={`p-1.5 rounded-lg text-blue-500 hover:bg-blue-100 hover:text-blue-600 transition-all shrink-0 ${
-                      isSuggesting ? "animate-pulse" : "active:scale-95"
-                    }`}
-                    title="Sugerir resposta com IA"
+                    className="p-2 text-neutral-400 hover:text-blue-600 hover:bg-blue-50 rounded-full transition-colors cursor-pointer disabled:opacity-50"
+                    title="Sugestão de resposta com IA"
                   >
-                    <Sparkles className={`w-5 h-5 ${isSuggesting ? "animate-spin" : ""}`} />
+                    <Sparkles className={`w-5 h-5 ${isSuggesting ? "animate-spin text-blue-500" : ""}`} />
                   </button>
                 )}
-
                 <button
                   type="submit"
                   disabled={!draft.trim() && !attachment}
-                  className="w-10 h-10 bg-blue-600 hover:bg-blue-700 disabled:bg-neutral-200 text-white disabled:text-neutral-400 rounded-full transition-all flex items-center justify-center cursor-pointer active:scale-95 shrink-0 shadow-xs"
+                  className="w-10 h-10 rounded-full flex items-center justify-center bg-blue-600 hover:bg-blue-700 disabled:bg-neutral-200 text-white disabled:text-neutral-400 transition-all cursor-pointer active:scale-95 shrink-0 shadow-xs"
                   title="Enviar"
                 >
-                  <Send className="w-4 h-4" />
+                  <Send className="w-4.5 h-4.5" />
                 </button>
               </div>
 
-              <div className="flex md:hidden items-center justify-between border-t border-neutral-200/40 pt-1.5 px-1 w-full">
+              <div className="flex md:hidden items-center justify-between w-full mt-2 pt-2 border-t border-neutral-100">
                 <div className="flex items-center gap-1">
                   <button
                     type="button"
                     onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-                    className={`p-1.5 rounded-lg text-neutral-400 hover:bg-neutral-200/50 hover:text-neutral-600 transition-colors shrink-0 ${
-                      showEmojiPicker ? "bg-neutral-200/50 text-neutral-600" : ""
-                    }`}
-                    title="Emojis"
+                    className="p-2 text-neutral-400 hover:text-neutral-600 hover:bg-neutral-200/50 rounded-full transition-colors cursor-pointer"
                   >
                     <Smile className="w-5 h-5" />
                   </button>
-
+                  <button
+                    type="button"
+                    onClick={handleAttachmentClick}
+                    className="p-2 text-neutral-400 hover:text-neutral-600 hover:bg-neutral-200/50 rounded-full transition-colors cursor-pointer"
+                  >
+                    <Paperclip className="w-5 h-5" />
+                  </button>
                   {aiEnabled && (
                     <button
                       type="button"
                       onClick={handleAiSuggest}
                       disabled={isSuggesting}
-                      className={`p-1.5 rounded-lg text-blue-500 hover:bg-blue-100 hover:text-blue-600 transition-all shrink-0 ${
-                        isSuggesting ? "animate-pulse" : "active:scale-95"
-                      }`}
-                      title="Sugerir resposta com IA"
+                      className="p-2 text-neutral-400 hover:text-blue-600 hover:bg-blue-50 rounded-full transition-colors cursor-pointer disabled:opacity-50"
                     >
-                      <Sparkles className={`w-5 h-5 ${isSuggesting ? "animate-spin" : ""}`} />
+                      <Sparkles className={`w-5 h-5 ${isSuggesting ? "animate-spin text-blue-500" : ""}`} />
                     </button>
                   )}
-
-                  <button
-                    type="button"
-                    onClick={handleAttachmentClick}
-                    className="p-1.5 rounded-lg text-neutral-400 hover:bg-neutral-200/50 hover:text-neutral-600 transition-colors shrink-0 active:scale-95"
-                    title="Adicionar anexo"
-                  >
-                    <Paperclip className="w-5 h-5" />
-                  </button>
                 </div>
-
                 <button
                   type="submit"
                   disabled={!draft.trim() && !attachment}
-                  className="w-10 h-10 bg-blue-600 hover:bg-blue-700 disabled:bg-neutral-200 text-white disabled:text-neutral-400 rounded-full transition-all flex items-center justify-center cursor-pointer active:scale-95 shrink-0 shadow-xs"
-                  title="Enviar"
+                  className="w-10 h-10 rounded-full flex items-center justify-center bg-blue-600 hover:bg-blue-700 disabled:bg-neutral-200 text-white disabled:text-neutral-400 transition-all cursor-pointer active:scale-95 shrink-0 shadow-xs"
                 >
-                  <Send className="w-5 h-5" />
+                  <Send className="w-4.5 h-4.5" />
                 </button>
               </div>
             </form>
           )}
+
         </div>
       </div>
 
@@ -1222,6 +1324,37 @@ export function ChatArea({ conversationId }: { conversationId: string }) {
                 className="w-full bg-neutral-100 rounded-xl pl-9 pr-4 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all border border-transparent text-neutral-800"
               />
             </div>
+
+            {chatStatus !== "unassigned" && (
+              <button
+                type="button"
+                onClick={() => {
+                  setShowTransferModal(false);
+                  localStorage.setItem(`myde_chat_status_${conversationId}`, "unassigned");
+                  localStorage.removeItem(`myde_chat_finished_info_${conversationId}`);
+                  window.dispatchEvent(new Event("myde_settings_changed"));
+                  showToast("Atendimento retornado para não atribuídos!", "success");
+                }}
+                className="w-full text-left p-2.5 rounded-xl bg-neutral-50 hover:bg-neutral-100 border border-dashed border-neutral-300 hover:border-neutral-450 transition-all flex items-center justify-between gap-3 cursor-pointer group active:scale-98"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-full bg-neutral-200 text-neutral-600 flex items-center justify-center text-xs font-bold shrink-0 shadow-inner">
+                    <Users className="w-4 h-4 text-neutral-500" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-neutral-800 group-hover:text-blue-600 transition-colors">
+                      Fila de Não Atribuídos
+                    </p>
+                    <p className="text-[10px] text-neutral-400 mt-0.5">
+                      Deixar conversa disponível para qualquer atendente
+                    </p>
+                  </div>
+                </div>
+                <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2.5 py-1 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity">
+                  Liberar
+                </span>
+              </button>
+            )}
 
             <div className="flex flex-col gap-1.5 max-h-60 overflow-y-auto pr-1">
               {filteredAgents.length > 0 ? (

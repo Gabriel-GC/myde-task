@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useConversations, useMe } from "@/hooks/useApi";
 import { useChatPreferences } from "@/hooks/useChatPreferences";
 import { Conversation } from "@/lib/api";
-import { MessageSquare, Search, X, Pin, Camera, Paperclip, MoreVertical, Archive, ArchiveRestore, Trash2, Settings, Menu, BellOff, Ban } from "lucide-react";
+import { MessageSquare, Search, X, Pin, Camera, Paperclip, MoreVertical, Archive, ArchiveRestore, Trash2, Settings, Menu, BellOff, Ban, Users, CheckCircle2, UserPlus } from "lucide-react";
 
 interface SidebarProps {
   activeId: string | null;
@@ -30,7 +30,7 @@ function SidebarSkeleton() {
   );
 }
 
-function EmptyState({ showArchived }: { showArchived: boolean }) {
+function EmptyState({ activeTab }: { activeTab: string }) {
   return (
     <div className="flex flex-col items-center justify-center p-8 text-center h-64 animate-in fade-in duration-300">
       <div className="p-4 bg-neutral-100 rounded-full mb-3 text-neutral-400">
@@ -40,8 +40,10 @@ function EmptyState({ showArchived }: { showArchived: boolean }) {
         Nenhuma conversa
       </h3>
       <p className="text-xs text-neutral-400 mt-1 max-w-[220px]">
-        {showArchived
-          ? "Você não tem nenhuma conversa arquivada no momento."
+        {activeTab === "unassigned"
+          ? "Nenhuma conversa pendente para atribuição."
+          : activeTab === "finished"
+          ? "Você não tem nenhuma conversa finalizada."
           : "Nenhuma conversa ativa encontrada."}
       </p>
     </div>
@@ -57,14 +59,50 @@ export function Sidebar({ activeId, onSelect }: SidebarProps) {
   const { deletedIds, pinnedIds, archivedIds, toggleAction, resetPreferences } =
     useChatPreferences();
   const [search, setSearch] = useState("");
-  const [showArchived, setShowArchived] = useState(false);
+  const [activeTab, setActiveTab] = useState<"active" | "unassigned" | "finished" | "profile">("active");
+
+  const [sidebarWidth, setSidebarWidth] = useState(380);
+  const [isResizing, setIsResizing] = useState(false);
+  const [isDesktop, setIsDesktop] = useState(false);
+
+  useEffect(() => {
+    const checkSize = () => {
+      setIsDesktop(window.innerWidth >= 768);
+    };
+    checkSize();
+    window.addEventListener("resize", checkSize);
+    return () => window.removeEventListener("resize", checkSize);
+  }, []);
+
+  useEffect(() => {
+    if (!isResizing) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      const newWidth = Math.max(280, Math.min(e.clientX, 550));
+      setSidebarWidth(newWidth);
+    };
+
+    const handleMouseUp = () => {
+      setIsResizing(false);
+      document.body.style.cursor = "default";
+      document.body.style.userSelect = "auto";
+    };
+
+    document.addEventListener("mousemove", handleMouseMove);
+    document.addEventListener("mouseup", handleMouseUp);
+    
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+
+    return () => {
+      document.removeEventListener("mousemove", handleMouseMove);
+      document.removeEventListener("mouseup", handleMouseUp);
+    };
+  }, [isResizing]);
 
   const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
 
   const { data: me } = useMe();
-  const [showMacroManager, setShowMacroManager] = useState(false);
-  const [showChatMenu, setShowChatMenu] = useState(false);
-  const [showChatSettingsModal, setShowChatSettingsModal] = useState(false);
   const [enterToSendSetting, setEnterToSendSetting] = useState(() => {
     if (typeof window !== "undefined") {
       return localStorage.getItem("myde_enter_to_send") !== "false";
@@ -192,23 +230,14 @@ export function Sidebar({ activeId, onSelect }: SidebarProps) {
 
   useEffect(() => {
     setActiveMenuId(null);
-  }, [showArchived, search]);
+  }, [activeTab, search]);
 
   let visibleChats =
     conversations?.filter((c) => {
       if (deletedIds.includes(c.id)) return false;
-      if (showArchived) return archivedIds.includes(c.id);
-      return !archivedIds.includes(c.id);
+      const status = localStorage.getItem(`myde_chat_status_${c.id}`) || (c.id === "c-1003" ? "unassigned" : c.id === "c-1004" ? "finished" : "active");
+      return status === activeTab;
     }) || [];
-
-  const totalActive =
-    conversations?.filter(
-      (c) => !deletedIds.includes(c.id) && !archivedIds.includes(c.id),
-    ).length || 0;
-  const totalArchived =
-    conversations?.filter(
-      (c) => !deletedIds.includes(c.id) && archivedIds.includes(c.id),
-    ).length || 0;
 
   visibleChats = visibleChats.filter(
     (c) =>
@@ -224,19 +253,6 @@ export function Sidebar({ activeId, onSelect }: SidebarProps) {
     return 0;
   });
 
-  const handleDeleteClick = (e: React.MouseEvent, id: string) => {
-    e.stopPropagation();
-    setActiveMenuId(null);
-    if (
-      window.confirm(
-        "Tem certeza que deseja excluir esta conversa? Essa ação é local.",
-      )
-    ) {
-      toggleAction(id, "delete");
-      if (activeId === id) onSelect("");
-    }
-  };
-
   const formatTime = (isoString: string) => {
     try {
       const date = new Date(isoString);
@@ -250,126 +266,329 @@ export function Sidebar({ activeId, onSelect }: SidebarProps) {
   };
 
   return (
-    <aside className="w-full md:w-80 lg:w-[350px] border-r border-neutral-200 bg-white flex flex-col h-full select-none relative">
-      {(activeMenuId || showChatMenu) && (
-        <div
-          className="fixed inset-0 z-30 cursor-default"
-          onClick={() => {
-            setActiveMenuId(null);
-            setShowChatMenu(false);
-          }}
-        />
-      )}
-
-      <div className="p-4 pb-3 border-b border-neutral-100 flex flex-col gap-3.5">
-        <div className="flex justify-between items-center relative">
-          <h2 className="text-xl font-bold text-neutral-800 tracking-tight">
-            Mensagens
-          </h2>
-          <div className="relative">
-            <button
-              onClick={() => setShowChatMenu(!showChatMenu)}
-              className="p-1.5 rounded-lg text-neutral-400 hover:bg-neutral-100 hover:text-neutral-600 transition-all cursor-pointer active:scale-95"
-              title="Opções do Chat"
-            >
-              <MoreVertical className="w-5 h-5" />
-            </button>
-            {showChatMenu && (
-              <div className="absolute right-0 mt-1 w-56 bg-white border border-neutral-200 rounded-xl shadow-xl z-50 p-1 flex flex-col gap-0.5 animate-in fade-in slide-in-from-top-2 duration-150">
-                <button
-                  onClick={() => {
-                    setShowChatMenu(false);
-                    setShowMacroManager(true);
-                  }}
-                  className="w-full text-left px-3 py-2 rounded-lg text-xs font-semibold text-neutral-700 hover:bg-neutral-50 transition-colors flex items-center gap-2 cursor-pointer"
-                >
-                  <MessageSquare className="w-4 h-4 text-neutral-400" />
-                  Respostas Rápidas (Macros)
-                </button>
-                <button
-                  onClick={() => {
-                    setShowChatMenu(false);
-                    setShowChatSettingsModal(true);
-                  }}
-                  className="w-full text-left px-3 py-2 rounded-lg text-xs font-semibold text-neutral-700 hover:bg-neutral-50 transition-colors flex items-center gap-2 cursor-pointer"
-                >
-                  <Settings className="w-4 h-4 text-neutral-400" />
-                  Configurações do Chat
-                </button>
-              </div>
-            )}
+    <div
+      style={isDesktop ? { width: `${sidebarWidth}px` } : undefined}
+      className="flex h-full w-full md:w-[380px] shrink-0 pb-14 md:pb-0 font-sans bg-white border-r border-neutral-200 relative"
+    >
+      <aside className="hidden md:flex w-14 bg-neutral-50 flex-col items-center justify-between py-5 shrink-0 border-r border-neutral-200 text-neutral-400">
+        <div className="flex flex-col gap-6 items-center w-full">
+          <div className="w-7 h-7 rounded-lg bg-blue-600 flex items-center justify-center text-white font-black text-xs mb-3 shadow-xs">
+            M
           </div>
-        </div>
-
-        <div className="bg-neutral-100 p-0.5 rounded-lg flex items-center text-xs font-semibold text-neutral-500">
+          
           <button
-            onClick={() => setShowArchived(false)}
-            className={`flex-1 py-1.5 rounded-md flex items-center justify-center gap-1.5 transition-all duration-200 ${
-              !showArchived
-                ? "bg-white text-neutral-800 shadow-xs"
-                : "hover:text-neutral-700"
+            onClick={() => setActiveTab("active")}
+            className={`p-2.5 rounded-lg transition-all cursor-pointer relative group ${
+              activeTab === "active" ? "bg-blue-50 text-blue-600 font-bold" : "text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100"
             }`}
+            title="Conversas Ativas"
           >
-            <span>Ativas</span>
-            <span
-              className={`px-1.5 py-0.5 rounded-full text-[10px] transition-colors ${
-                !showArchived
-                  ? "bg-blue-50 text-blue-600 font-bold"
-                  : "bg-neutral-200/60 text-neutral-500"
-              }`}
-            >
-              {totalActive}
+            <MessageSquare className="w-4.5 h-4.5" />
+            <span className="absolute left-full ml-2 px-2 py-1 bg-neutral-800 text-white text-[9px] rounded-lg opacity-0 group-hover:opacity-100 transition-opacity z-50 pointer-events-none whitespace-nowrap shadow-md">
+              Conversas Ativas
             </span>
           </button>
+
           <button
-            onClick={() => setShowArchived(true)}
-            className={`flex-1 py-1.5 rounded-md flex items-center justify-center gap-1.5 transition-all duration-200 ${
-              showArchived
-                ? "bg-white text-neutral-800 shadow-xs"
-                : "hover:text-neutral-700"
+            onClick={() => setActiveTab("unassigned")}
+            className={`p-2.5 rounded-lg transition-all cursor-pointer relative group ${
+              activeTab === "unassigned" ? "bg-blue-50 text-blue-600 font-bold" : "text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100"
             }`}
+            title="Não Atribuídas"
           >
-            <span>Arquivadas</span>
-            <span
-              className={`px-1.5 py-0.5 rounded-full text-[10px] transition-colors ${
-                showArchived
-                  ? "bg-blue-50 text-blue-600 font-bold"
-                  : "bg-neutral-200/60 text-neutral-500"
-              }`}
-            >
-              {totalArchived}
+            <Users className="w-4.5 h-4.5" />
+            <span className="absolute left-full ml-2 px-2 py-1 bg-neutral-800 text-white text-[9px] rounded-lg opacity-0 group-hover:opacity-100 transition-opacity z-50 pointer-events-none whitespace-nowrap shadow-md">
+              Não Atribuídas
+            </span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab("finished")}
+            className={`p-2.5 rounded-lg transition-all cursor-pointer relative group ${
+              activeTab === "finished" ? "bg-blue-50 text-blue-600 font-bold" : "text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100"
+            }`}
+            title="Finalizadas"
+          >
+            <CheckCircle2 className="w-4.5 h-4.5" />
+            <span className="absolute left-full ml-2 px-2 py-1 bg-neutral-800 text-white text-[9px] rounded-lg opacity-0 group-hover:opacity-100 transition-opacity z-50 pointer-events-none whitespace-nowrap shadow-md">
+              Finalizadas
             </span>
           </button>
         </div>
 
-        <div className="relative flex items-center">
-          <span className="absolute left-3 text-neutral-400 pointer-events-none">
-            <Search className="w-4 h-4" strokeWidth={2.5} />
+        <button
+          onClick={() => setActiveTab("profile")}
+          className={`p-0.5 rounded-full border transition-all cursor-pointer relative group ${
+            activeTab === "profile" ? "border-blue-500 ring-2 ring-blue-500/10" : "border-transparent hover:border-neutral-300"
+          }`}
+          title="Meu Perfil"
+        >
+          <div className="w-7 h-7 rounded-full bg-blue-600 flex items-center justify-center text-white text-[10px] font-bold shadow-inner">
+            {me?.name?.charAt(0).toUpperCase() || "A"}
+          </div>
+          <span className="absolute left-full ml-2 px-2 py-1 bg-neutral-800 text-white text-[9px] rounded-lg opacity-0 group-hover:opacity-100 transition-opacity z-50 pointer-events-none whitespace-nowrap shadow-md">
+            Meu Perfil
           </span>
-          <input
-            type="text"
-            placeholder="Buscar contato..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full bg-neutral-100 rounded-lg pl-9 pr-8 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all border border-transparent"
+        </button>
+      </aside>
+
+      <aside className="flex-1 border-r border-neutral-200 bg-white flex flex-col h-full select-none relative min-w-0">
+        {activeMenuId && (
+          <div
+            className="fixed inset-0 z-30 cursor-default"
+            onClick={() => {
+              setActiveMenuId(null);
+            }}
           />
-          {search && (
-            <button
-              onClick={() => setSearch("")}
-              className="absolute right-2.5 p-0.5 rounded-full hover:bg-neutral-200 text-neutral-400 hover:text-neutral-600 transition-colors"
-              title="Limpar busca"
-            >
-              <X className="w-4 h-4" strokeWidth={2} />
-            </button>
-          )}
-        </div>
-      </div>
+        )}
+
+        {activeTab === "profile" ? (
+          <div className="flex-1 flex flex-col min-h-0 bg-white animate-in fade-in duration-200">
+            <div className="p-4 pb-3 border-b border-neutral-100 flex items-center justify-between">
+              <h2 className="text-xl font-bold text-neutral-800 tracking-tight">
+                Meu Perfil
+              </h2>
+            </div>
+            <div className="flex-1 overflow-y-auto p-3.5 sm:p-5 flex flex-col gap-6">
+              <div className="bg-neutral-50 border border-neutral-200/80 rounded-2xl p-4 flex items-center gap-4 text-left shadow-xs">
+                <div className="w-14 h-14 rounded-full bg-blue-600 flex items-center justify-center text-white text-lg font-bold shadow-md shrink-0 select-none">
+                  {me?.name?.charAt(0).toUpperCase() || "A"}
+                </div>
+                <div className="min-w-0">
+                  <h3 className="font-extrabold text-neutral-850 text-sm md:text-base truncate">{me?.name || "Carregando..."}</h3>
+                  <p className="text-[11px] text-neutral-500 font-semibold mt-0.5">{me?.role || "Atendente"}</p>
+                  <span className="inline-flex items-center gap-1.5 mt-2 bg-emerald-50 text-emerald-700 border border-emerald-200/60 text-[9px] font-extrabold px-2 py-0.5 rounded-full uppercase tracking-wider">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                    Ativo
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-2">
+                <span className="text-[10px] font-bold text-neutral-500 uppercase tracking-wider text-left pl-1">Preferências de Chat</span>
+                
+                <div className="flex flex-col gap-0.5 bg-neutral-50/30 border border-neutral-200 rounded-2xl p-1">
+                  <button
+                    type="button"
+                    onClick={() => setAiEnabled(!aiEnabled)}
+                    className="w-full flex items-center justify-between gap-4 p-3 hover:bg-neutral-50 rounded-xl transition-all text-left active:scale-[0.99] cursor-pointer"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <span className="text-xs font-bold text-neutral-805 block">Copiloto de IA</span>
+                      <span className="text-[10px] text-neutral-455 block mt-0.5 leading-relaxed">Exibir sugestões de resposta automáticas por inteligência artificial</span>
+                    </div>
+                    <div
+                      className={`w-9 h-5 rounded-full p-0.5 transition-colors duration-200 shrink-0 flex items-center ${
+                        aiEnabled ? "bg-blue-600 justify-end" : "bg-neutral-200 justify-start"
+                      }`}
+                    >
+                      <div className="w-4 h-4 rounded-full bg-white shadow-sm" />
+                    </div>
+                  </button>
+
+                  <hr className="border-neutral-100 mx-3" />
+
+                  <button
+                    type="button"
+                    onClick={() => setSoundAlerts(!soundAlerts)}
+                    className="w-full flex items-center justify-between gap-4 p-3 hover:bg-neutral-50 rounded-xl transition-all text-left active:scale-[0.99] cursor-pointer"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <span className="text-xs font-bold text-neutral-805 block">Alertas Sonoros</span>
+                      <span className="text-[10px] text-neutral-455 block mt-0.5 leading-relaxed">Reproduzir aviso sonoro quando novas mensagens chegarem</span>
+                    </div>
+                    <div
+                      className={`w-9 h-5 rounded-full p-0.5 transition-colors duration-200 shrink-0 flex items-center ${
+                        soundAlerts ? "bg-blue-600 justify-end" : "bg-neutral-200 justify-start"
+                      }`}
+                    >
+                      <div className="w-4 h-4 rounded-full bg-white shadow-sm" />
+                    </div>
+                  </button>
+
+                  <hr className="border-neutral-100 mx-3" />
+
+                  <button
+                    type="button"
+                    onClick={() => setEnterToSendSetting(!enterToSendSetting)}
+                    className="w-full flex items-center justify-between gap-4 p-3 hover:bg-neutral-50 rounded-xl transition-all text-left active:scale-[0.99] cursor-pointer"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <span className="text-xs font-bold text-neutral-805 block">Pressionar Enter para Enviar</span>
+                      <span className="text-[10px] text-neutral-455 block mt-0.5 leading-relaxed">Use Enter para enviar mensagens e Shift+Enter para nova linha</span>
+                    </div>
+                    <div
+                      className={`w-9 h-5 rounded-full p-0.5 transition-colors duration-200 shrink-0 flex items-center ${
+                        enterToSendSetting ? "bg-blue-600 justify-end" : "bg-neutral-200 justify-start"
+                      }`}
+                    >
+                      <div className="w-4 h-4 rounded-full bg-white shadow-sm" />
+                    </div>
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-3 border-t border-neutral-100 pt-4">
+                <span className="text-[10px] font-bold text-neutral-500 uppercase tracking-wider text-left pl-1">Respostas Rápidas (Macros)</span>
+                
+                <form onSubmit={handleAddMacro} className="flex flex-col gap-2.5 bg-neutral-50/50 p-3.5 rounded-xl border border-neutral-200/80 text-left">
+                  <div className="flex flex-col gap-1">
+                    <label className="text-[9px] font-bold text-neutral-450 uppercase tracking-wider">Novo Atalho</label>
+                    <div className="relative flex items-center">
+                      <span className="absolute left-3 text-neutral-400 font-bold text-xs select-none">/</span>
+                      <input
+                        type="text"
+                        placeholder="ex: pix, saudacao"
+                        value={newShortcut}
+                        onChange={(e) => setNewShortcut(e.target.value)}
+                        className="w-full bg-white rounded-lg pl-6 pr-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 border border-neutral-200 text-neutral-800 placeholder-neutral-400 transition-all focus:bg-white"
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col gap-1">
+                    <label className="text-[9px] font-bold text-neutral-450 uppercase tracking-wider">Mensagem Automática</label>
+                    <textarea
+                      placeholder="Digite a resposta rápida..."
+                      value={newText}
+                      onChange={(e) => setNewText(e.target.value)}
+                      className="w-full bg-white rounded-lg p-2 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 border border-neutral-200 resize-none h-14 text-neutral-800 placeholder-neutral-400 transition-all"
+                      required
+                    />
+                  </div>
+
+                  <button
+                    type="submit"
+                    className="w-full py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold transition-all active:scale-[0.97] cursor-pointer shadow-xs"
+                  >
+                    Adicionar Atalho
+                  </button>
+                </form>
+
+                {macros.length > 0 ? (
+                  <div className="flex flex-col gap-1.5 max-h-48 overflow-y-auto pr-0.5">
+                    {macros.map((macro) => (
+                      <div key={macro.id} className="flex items-center justify-between gap-3 p-2.5 bg-neutral-50 rounded-xl border border-neutral-200/80 hover:border-neutral-200 transition-all text-xs">
+                        <div className="min-w-0 flex-1">
+                          <p className="font-extrabold text-blue-600 text-xs text-left">/{macro.shortcut}</p>
+                          <p className="text-neutral-500 truncate text-[10px] text-left mt-0.5 leading-relaxed">{macro.text}</p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteMacro(macro.id)}
+                          className="p-1.5 rounded-lg text-neutral-400 hover:bg-red-50 hover:text-red-500 transition-colors cursor-pointer shrink-0"
+                          title="Excluir atalho"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-center text-[10px] text-neutral-400 py-2">Nenhum atalho configurado.</p>
+                )}
+              </div>
+
+              <div className="flex flex-col gap-1.5 border-t border-neutral-100 pt-4">
+                <span className="text-[10px] font-bold text-neutral-500 uppercase tracking-wider text-left pl-1">Tema do Fundo do Chat</span>
+                <div className="grid grid-cols-4 gap-2">
+                  {[
+                    { name: "Clássico", color: "#EFEAE2" },
+                    { name: "Cinza", color: "#f5f5f5" },
+                    { name: "Slate", color: "#e2e8f0" },
+                    { name: "Sky", color: "#f0f9ff" }
+                  ].map((theme) => {
+                    const isActive = localStorage.getItem("myde_chat_bg") === theme.color || (!localStorage.getItem("myde_chat_bg") && theme.color === "#EFEAE2");
+                    return (
+                      <button
+                        key={theme.color}
+                        onClick={() => {
+                          localStorage.setItem("myde_chat_bg", theme.color);
+                          window.dispatchEvent(new Event("myde_settings_changed"));
+                        }}
+                        className={`p-2 rounded-xl border text-[10px] font-bold flex flex-col items-center gap-1.5 transition-all hover:bg-neutral-50 cursor-pointer ${
+                          isActive
+                            ? "border-blue-600 bg-blue-50/20 ring-2 ring-blue-500/10 text-blue-700"
+                            : "border-neutral-200 text-neutral-500 hover:text-neutral-700"
+                        }`}
+                      >
+                        <div className="w-6 h-6 rounded-full border border-neutral-300 shadow-inner shrink-0" style={{ backgroundColor: theme.color }} />
+                        <span className="truncate w-full">{theme.name}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-2 border-t border-neutral-100 pt-4">
+                <span className="text-[10px] font-bold text-neutral-500 uppercase tracking-wider text-left pl-1">Ações Administrativas</span>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => {
+                      if (window.confirm("Deseja mesmo restaurar todos os chats arquivados, fixados e ocultados?")) {
+                        resetPreferences();
+                        showToast("Todos os chats foram restaurados com sucesso!", "success");
+                        setTimeout(() => window.location.reload(), 1000);
+                      }
+                    }}
+                    className="flex-1 py-2 bg-neutral-100 hover:bg-neutral-200 text-neutral-700 text-xs font-bold rounded-xl transition-all active:scale-[0.97] cursor-pointer text-center border border-neutral-200/50"
+                  >
+                    Restaurar Chats
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (window.confirm("Deseja limpar todas as configurações (macros, preferências, etc.)? Isso restaurará os padrões.")) {
+                        localStorage.clear();
+                        showToast("Todas as configurações foram limpas!", "success");
+                        setTimeout(() => window.location.reload(), 1000);
+                      }
+                    }}
+                    className="flex-1 py-2 bg-red-50 hover:bg-red-100 text-red-600 text-xs font-bold rounded-xl transition-all active:scale-[0.97] cursor-pointer text-center border border-red-100"
+                  >
+                    Limpar Tudo
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <>
+            <div className="p-4 pb-3 border-b border-neutral-100 flex flex-col gap-3.5">
+              <div className="flex justify-between items-center relative">
+                <h2 className="text-xl font-bold text-neutral-800 tracking-tight capitalize">
+                  {activeTab === "active" ? "Conversas Ativas" : activeTab === "unassigned" ? "Não Atribuídas" : "Finalizadas"}
+                </h2>
+              </div>
+
+              <div className="relative flex items-center">
+                <span className="absolute left-3 text-neutral-400 pointer-events-none">
+                  <Search className="w-4 h-4" strokeWidth={2.5} />
+                </span>
+                <input
+                  type="text"
+                  placeholder="Buscar contato..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="w-full bg-neutral-100 rounded-lg pl-9 pr-8 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all border border-transparent"
+                />
+                {search && (
+                  <button
+                    onClick={() => setSearch("")}
+                    className="absolute right-2.5 p-0.5 rounded-full hover:bg-neutral-200 text-neutral-400 hover:text-neutral-600 transition-colors"
+                    title="Limpar busca"
+                  >
+                    <X className="w-4 h-4" strokeWidth={2} />
+                  </button>
+                )}
+              </div>
+            </div>
 
       <div className="flex-1 overflow-y-auto min-h-0">
         {isLoading && <SidebarSkeleton />}
 
         {!isLoading && visibleChats.length === 0 && (
-          <EmptyState showArchived={showArchived} />
+          <EmptyState activeTab={activeTab} />
         )}
 
         {!isLoading && visibleChats.length > 0 && (
@@ -497,12 +716,66 @@ export function Sidebar({ activeId, onSelect }: SidebarProps) {
                         )}
                       </div>
 
-                      {isUnread && (
-                        <span className="min-w-4.5 h-4.5 px-1.5 rounded-full bg-blue-600 text-white text-[10px] font-extrabold flex items-center justify-center shrink-0 shadow-xs">
-                          {chat.unread}
-                        </span>
+                      {activeTab === "unassigned" ? (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            localStorage.setItem(`myde_chat_status_${chat.id}`, "active");
+                            localStorage.removeItem(`myde_chat_finished_info_${chat.id}`);
+                            window.dispatchEvent(new Event("myde_settings_changed"));
+                            showToast("Conversa atribuída a você!", "success");
+                          }}
+                          className="px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-[10px] font-bold shadow-sm active:scale-95 transition-all shrink-0 cursor-pointer text-center"
+                        >
+                          Atribuir
+                        </button>
+                      ) : (
+                        isUnread && (
+                          <span className="min-w-4.5 h-4.5 px-1.5 rounded-full bg-blue-600 text-white text-[10px] font-extrabold flex items-center justify-center shrink-0 shadow-xs">
+                            {chat.unread}
+                          </span>
+                        )
                       )}
                     </div>
+                    {activeTab === "finished" && (() => {
+                      const getFinishedInfo = () => {
+                        if (typeof window !== "undefined") {
+                          const stored = localStorage.getItem(`myde_chat_finished_info_${chat.id}`);
+                          if (stored) {
+                            try {
+                              return JSON.parse(stored);
+                            } catch {}
+                          }
+                        }
+                        return {
+                          finishedAt: chat.lastMessageAt,
+                          finishedBy: "Atendente myde"
+                        };
+                      };
+                      const finishedInfo = getFinishedInfo();
+                      const formatFinishedDateTime = (isoString: string) => {
+                        try {
+                          const date = new Date(isoString);
+                          const day = String(date.getDate()).padStart(2, "0");
+                          const month = String(date.getMonth() + 1).padStart(2, "0");
+                          const year = date.getFullYear();
+                          const hours = String(date.getHours()).padStart(2, "0");
+                          const minutes = String(date.getMinutes()).padStart(2, "0");
+                          return `${day}/${month}/${year} às ${hours}:${minutes}`;
+                        } catch {
+                          return "";
+                        }
+                      };
+                      return (
+                        <div className="text-[10px] text-neutral-400 mt-1.5 flex items-center gap-1 border-t border-neutral-100 pt-1.5 font-medium">
+                          <CheckCircle2 className="w-3 h-3 text-emerald-500 shrink-0" />
+                          <span className="truncate">
+                            Finalizado em {formatFinishedDateTime(finishedInfo.finishedAt)} por {finishedInfo.finishedBy}
+                          </span>
+                        </div>
+                      );
+                    })()}
                   </div>
 
                   <div className="shrink-0 relative z-40">
@@ -540,33 +813,56 @@ export function Sidebar({ activeId, onSelect }: SidebarProps) {
                           <span>{isPinned ? "Desafixar" : "Fixar"}</span>
                         </button>
 
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            toggleAction(chat.id, "archive");
-                            setActiveMenuId(null);
-                          }}
-                          className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-neutral-700 hover:bg-neutral-50 transition-colors"
-                        >
-                          {showArchived ? (
+                        {activeTab === "active" && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              localStorage.setItem(`myde_chat_status_${chat.id}`, "finished");
+                              const finishedAt = new Date().toISOString();
+                              const finishedBy = me?.name || "Atendente myde";
+                              localStorage.setItem(`myde_chat_finished_info_${chat.id}`, JSON.stringify({ finishedAt, finishedBy }));
+                              window.dispatchEvent(new Event("myde_settings_changed"));
+                              showToast("Atendimento finalizado!", "success");
+                              setActiveMenuId(null);
+                            }}
+                            className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-neutral-700 hover:bg-neutral-50 transition-colors"
+                          >
+                            <CheckCircle2 className="w-3.5 h-3.5 text-neutral-400" strokeWidth={2} />
+                            <span>Finalizar Atendimento</span>
+                          </button>
+                        )}
+                        {activeTab === "unassigned" && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              localStorage.setItem(`myde_chat_status_${chat.id}`, "active");
+                              localStorage.removeItem(`myde_chat_finished_info_${chat.id}`);
+                              window.dispatchEvent(new Event("myde_settings_changed"));
+                              showToast("Atendimento atribuído a você!", "success");
+                              setActiveMenuId(null);
+                            }}
+                            className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-neutral-700 hover:bg-neutral-50 transition-colors"
+                          >
+                            <UserPlus className="w-3.5 h-3.5 text-neutral-400" strokeWidth={2} />
+                            <span>Atribuir a mim</span>
+                          </button>
+                        )}
+                        {activeTab === "finished" && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              localStorage.setItem(`myde_chat_status_${chat.id}`, "active");
+                              localStorage.removeItem(`myde_chat_finished_info_${chat.id}`);
+                              window.dispatchEvent(new Event("myde_settings_changed"));
+                              showToast("Atendimento reaberto!", "success");
+                              setActiveMenuId(null);
+                            }}
+                            className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-neutral-700 hover:bg-neutral-50 transition-colors"
+                          >
                             <ArchiveRestore className="w-3.5 h-3.5 text-neutral-400" strokeWidth={2} />
-                          ) : (
-                            <Archive className="w-3.5 h-3.5 text-neutral-400" strokeWidth={2} />
-                          )}
-                          <span>
-                            {showArchived ? "Desarquivar" : "Arquivar"}
-                          </span>
-                        </button>
-
-                        <hr className="border-neutral-100 my-1" />
-
-                        <button
-                          onClick={(e) => handleDeleteClick(e, chat.id)}
-                          className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-red-600 hover:bg-red-50 transition-colors"
-                        >
-                          <Trash2 className="w-3.5 h-3.5 text-red-500" strokeWidth={2} />
-                          <span>Excluir</span>
-                        </button>
+                            <span>Reabrir Atendimento</span>
+                          </button>
+                        )}
                       </div>
                     )}
                   </div>
@@ -576,249 +872,63 @@ export function Sidebar({ activeId, onSelect }: SidebarProps) {
           </div>
         )}
       </div>
+          </>
+        )}
 
-      <div className="border-t border-neutral-200 bg-neutral-50/60 p-3 flex items-center justify-between gap-3 relative shrink-0">
-        <div className="flex items-center gap-2.5 min-w-0">
-          <div className="relative shrink-0 select-none">
-            <div className="w-9 h-9 rounded-full bg-blue-600 flex items-center justify-center text-white text-xs font-bold shadow-inner">
-              {me?.name?.charAt(0).toUpperCase() || "A"}
-            </div>
-            <span
-              className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-white ${
-                status === "online"
-                  ? "bg-green-500"
-                  : status === "away"
-                  ? "bg-amber-500"
-                  : "bg-red-500"
-              }`}
-            />
-          </div>
-          <div className="min-w-0">
-            <p className="text-xs font-bold text-neutral-800 truncate leading-tight">
-              {me?.name || "Carregando..."}
-            </p>
-            <p className="text-[10px] text-neutral-500 truncate mt-0.5">
-              {me?.role || "Atendente"}
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {showMacroManager && (
-        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-200" onClick={() => setShowMacroManager(false)}>
-          <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl p-5 flex flex-col gap-4 animate-in zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
-            <div className="flex justify-between items-center">
-              <div>
-                <h3 className="font-bold text-neutral-800 text-sm uppercase tracking-wide">
-                  Respostas Rápidas (Macros)
-                </h3>
-                <p className="text-[10px] text-neutral-400">Configure atalhos usando / no chat</p>
-              </div>
-              <button
-                onClick={() => setShowMacroManager(false)}
-                className="p-1 rounded-full hover:bg-neutral-150 text-neutral-400 hover:text-neutral-600 transition-all cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <hr className="border-neutral-100" />
-
-            <form onSubmit={handleAddMacro} className="flex flex-col gap-3">
-              <div className="flex flex-col gap-1">
-                <label className="text-[10px] font-bold text-neutral-500 uppercase">Novo Atalho</label>
-                <div className="relative flex items-center">
-                  <span className="absolute left-2.5 text-neutral-400 font-bold text-xs select-none">/</span>
-                  <input
-                    type="text"
-                    placeholder="ex: pix, saudacao"
-                    value={newShortcut}
-                    onChange={(e) => setNewShortcut(e.target.value)}
-                    className="w-full bg-neutral-100 rounded-lg pl-5 pr-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all border border-transparent"
-                    required
-                  />
-                </div>
-              </div>
-
-              <div className="flex flex-col gap-1">
-                <label className="text-[10px] font-bold text-neutral-500 uppercase">Texto da Resposta</label>
-                <textarea
-                  placeholder="Digite a mensagem rápida..."
-                  value={newText}
-                  onChange={(e) => setNewText(e.target.value)}
-                  className="w-full bg-neutral-100 rounded-lg p-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all border border-transparent resize-none h-16"
-                  required
-                />
-              </div>
-
-              <button
-                type="submit"
-                className="w-full py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold transition-all active:scale-95 cursor-pointer shadow-xs"
-              >
-                Adicionar Macro
-              </button>
-            </form>
-
-            <hr className="border-neutral-100" />
-
-            <div className="flex flex-col gap-2 flex-1 max-h-48 overflow-y-auto pr-1">
-              <span className="text-[10px] font-bold text-neutral-500 uppercase">Atalhos Ativos ({macros.length})</span>
-              {macros.length === 0 ? (
-                <p className="text-center text-xs text-neutral-400 py-4">Nenhum atalho configurado.</p>
-              ) : (
-                <div className="flex flex-col gap-1.5">
-                  {macros.map((macro) => (
-                    <div key={macro.id} className="flex items-center justify-between gap-3 p-2 bg-neutral-50 rounded-lg border border-neutral-100 text-xs">
-                      <div className="min-w-0 flex-1">
-                        <p className="font-bold text-blue-600">/{macro.shortcut}</p>
-                        <p className="text-neutral-500 truncate mt-0.5">{macro.text}</p>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteMacro(macro.id)}
-                        className="p-1 rounded-lg text-neutral-400 hover:bg-red-50 hover:text-red-500 transition-colors cursor-pointer"
-                        title="Excluir atalho"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {showChatSettingsModal && (
-        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-200" onClick={() => setShowChatSettingsModal(false)}>
-          <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl p-5 flex flex-col gap-4 animate-in zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
-            <div className="flex justify-between items-center">
-              <div>
-                <h3 className="font-bold text-neutral-800 text-sm uppercase tracking-wide">
-                  Configurações do Chat
-                </h3>
-                <p className="text-[10px] text-neutral-400">Personalize a sua experiência de atendimento</p>
-              </div>
-              <button
-                onClick={() => setShowChatSettingsModal(false)}
-                className="p-1 rounded-full hover:bg-neutral-150 text-neutral-400 hover:text-neutral-600 transition-all cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <hr className="border-neutral-100" />
-
-            <div className="flex flex-col gap-4">
-              <div className="flex items-center justify-between">
-                <div className="flex flex-col">
-                  <span className="text-xs font-bold text-neutral-700">Pressionar Enter para Enviar</span>
-                  <span className="text-[10px] text-neutral-400">Use Enter para enviar e Shift+Enter para quebra de linha</span>
-                </div>
-                <button
-                  onClick={() => setEnterToSendSetting(!enterToSendSetting)}
-                  className={`w-9 h-5 rounded-full p-0.5 transition-all duration-200 flex items-center ${
-                    enterToSendSetting ? "bg-blue-600 justify-end" : "bg-neutral-200 justify-start"
-                  }`}
-                >
-                  <span className="w-4 h-4 rounded-full bg-white shadow-sm" />
-                </button>
-              </div>
-
-              <div className="flex items-center justify-between">
-                <div className="flex flex-col">
-                  <span className="text-xs font-bold text-neutral-700">Copiloto de IA</span>
-                  <span className="text-[10px] text-neutral-400">Habilitar painel de respostas automáticas sugeridas</span>
-                </div>
-                <button
-                  onClick={() => setAiEnabled(!aiEnabled)}
-                  className={`w-9 h-5 rounded-full p-0.5 transition-all duration-200 flex items-center ${
-                    aiEnabled ? "bg-blue-600 justify-end" : "bg-neutral-200 justify-start"
-                  }`}
-                >
-                  <span className="w-4 h-4 rounded-full bg-white shadow-sm" />
-                </button>
-              </div>
-
-              <div className="flex items-center justify-between">
-                <div className="flex flex-col">
-                  <span className="text-xs font-bold text-neutral-700">Notificações Sonoras</span>
-                  <span className="text-[10px] text-neutral-400">Reproduzir aviso sonoro para novas mensagens</span>
-                </div>
-                <button
-                  onClick={() => setSoundAlerts(!soundAlerts)}
-                  className={`w-9 h-5 rounded-full p-0.5 transition-all duration-200 flex items-center ${
-                    soundAlerts ? "bg-blue-600 justify-end" : "bg-neutral-200 justify-start"
-                  }`}
-                >
-                  <span className="w-4 h-4 rounded-full bg-white shadow-sm" />
-                </button>
-              </div>
-
-              <div className="flex flex-col gap-1.5">
-                <span className="text-xs font-bold text-neutral-700">Tema do Fundo do Chat</span>
-                <div className="grid grid-cols-4 gap-2">
-                  {[
-                    { name: "Clássico", color: "#EFEAE2" },
-                    { name: "Cinza", color: "#f5f5f5" },
-                    { name: "Slate", color: "#e2e8f0" },
-                    { name: "Sky", color: "#f0f9ff" }
-                  ].map((theme) => (
-                    <button
-                      key={theme.color}
-                      onClick={() => {
-                        localStorage.setItem("myde_chat_bg", theme.color);
-                        window.dispatchEvent(new Event("myde_settings_changed"));
-                      }}
-                      className={`p-2 rounded-lg border text-[10px] font-semibold flex flex-col items-center gap-1.5 transition-all hover:bg-neutral-50 cursor-pointer ${
-                        localStorage.getItem("myde_chat_bg") === theme.color || (!localStorage.getItem("myde_chat_bg") && theme.color === "#EFEAE2")
-                          ? "border-blue-600 ring-2 ring-blue-500/10 font-bold"
-                          : "border-neutral-200"
-                      }`}
-                    >
-                      <div className="w-5 h-5 rounded-full border border-neutral-300" style={{ backgroundColor: theme.color }} />
-                      {theme.name}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <hr className="border-neutral-100" />
-
-              <div className="flex flex-col gap-2">
-                <span className="text-[10px] font-bold text-neutral-500 uppercase">Ações do Chat</span>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => {
-                      if (window.confirm("Deseja mesmo restaurar todos os chats arquivados, fixados e ocultados?")) {
-                        resetPreferences();
-                        showToast("Todos os chats foram restaurados com sucesso!", "success");
-                        setTimeout(() => window.location.reload(), 1000);
-                      }
-                    }}
-                    className="flex-1 py-2 bg-neutral-100 hover:bg-neutral-200 text-neutral-700 text-xs font-bold rounded-lg transition-all active:scale-95 cursor-pointer text-center"
-                  >
-                    Restaurar Chats
-                  </button>
-                  <button
-                    onClick={() => {
-                      if (window.confirm("Deseja limpar todas as configurações (macros, preferências, etc.)? Isso restaurará os padrões.")) {
-                        localStorage.clear();
-                        showToast("Todas as configurações foram limpas!", "success");
-                        setTimeout(() => window.location.reload(), 1000);
-                      }
-                    }}
-                    className="flex-1 py-2 bg-red-50 hover:bg-red-100 text-red-600 text-xs font-bold rounded-lg transition-all active:scale-95 cursor-pointer text-center"
-                  >
-                    Limpar Tudo
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </aside>
+
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 h-14 bg-white border-t border-neutral-200 z-45 flex items-center justify-around px-2 pointer-events-auto shadow-lg animate-in slide-in-from-bottom duration-200">
+        <button
+          onClick={() => setActiveTab("active")}
+          className={`flex flex-col items-center justify-center flex-1 py-1 transition-colors cursor-pointer ${
+            activeTab === "active" ? "text-blue-600 font-bold" : "text-neutral-400"
+          }`}
+        >
+          <MessageSquare className="w-5 h-5" />
+          <span className="text-[9px] mt-0.5">Ativas</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab("unassigned")}
+          className={`flex flex-col items-center justify-center flex-1 py-1 transition-colors relative cursor-pointer ${
+            activeTab === "unassigned" ? "text-blue-600 font-bold" : "text-neutral-400"
+          }`}
+        >
+          <Users className="w-5 h-5" />
+          <span className="text-[9px] mt-0.5">Não Atrib.</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab("finished")}
+          className={`flex flex-col items-center justify-center flex-1 py-1 transition-colors cursor-pointer ${
+            activeTab === "finished" ? "text-blue-600 font-bold" : "text-neutral-400"
+          }`}
+        >
+          <CheckCircle2 className="w-5 h-5" />
+          <span className="text-[9px] mt-0.5">Finalizadas</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab("profile")}
+          className={`flex flex-col items-center justify-center flex-1 py-1 transition-colors cursor-pointer ${
+            activeTab === "profile" ? "text-blue-600 font-bold" : "text-neutral-400"
+          }`}
+        >
+          <div className={`w-6.5 h-6.5 rounded-full flex items-center justify-center text-white text-[10px] font-bold shadow-inner ${
+            activeTab === "profile" ? "bg-blue-600 ring-2 ring-blue-500/20" : "bg-neutral-400"
+          }`}>
+            {me?.name?.charAt(0).toUpperCase() || "A"}
+          </div>
+          <span className="text-[9px] mt-0.5">Perfil</span>
+        </button>
+      </nav>
+
+      <div
+        onMouseDown={() => setIsResizing(true)}
+        className="hidden md:block absolute top-0 right-0 bottom-0 w-1.5 cursor-col-resize hover:bg-blue-500/20 active:bg-blue-600/30 transition-colors z-50 group"
+      >
+        <div className="absolute top-1/2 -translate-y-1/2 right-0.5 w-0.5 h-8 bg-neutral-300 rounded group-hover:bg-blue-500 transition-colors" />
+      </div>
+    </div>
   );
 }
