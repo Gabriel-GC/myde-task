@@ -9,7 +9,7 @@ import {
   useMe,
 } from "@/hooks/useApi";
 import { useDraft } from "@/hooks/useDraft";
-import { Search, ChevronLeft, ChevronRight, X, Check, CheckCheck, MessageSquare, FileDown, Zap, Sparkles, Copy, Smile, Paperclip, Send, Pencil } from "lucide-react";
+import { Search, ChevronLeft, ChevronRight, X, Check, CheckCheck, MessageSquare, FileDown, Zap, Sparkles, Copy, Smile, Paperclip, Send, Pencil, UserPlus, MoreVertical } from "lucide-react";
 
 const EMOJIS = [
   "😊", "😂", "🤣", "😍", "🥰", "😎", "😉", "😅",
@@ -112,6 +112,7 @@ export function ChatArea({ conversationId }: { conversationId: string }) {
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
   const [editingText, setEditingText] = useState("");
   const [editCount, setEditCount] = useState(0);
+  const [showActionsMenu, setShowActionsMenu] = useState(false);
 
   useEffect(() => {
     const handleEdit = () => setEditCount((prev) => prev + 1);
@@ -205,6 +206,28 @@ export function ChatArea({ conversationId }: { conversationId: string }) {
     }
     window.dispatchEvent(new Event("myde_message_edited"));
     setEditingMessageId(null);
+  };
+
+  const handleTransferChat = (agentId: string) => {
+    if (!agentId) return;
+    const agentName = [
+      { id: "agent-2", name: "Bruno Lima" },
+      { id: "agent-3", name: "Carla Souza" },
+      { id: "agent-4", name: "Diego Rodrigues" },
+      { id: "agent-5", name: "Mariana Costa" }
+    ].find(a => a.id === agentId)?.name;
+    if (window.confirm(`Deseja transferir o atendimento para ${agentName}?`)) {
+      try {
+        alert(`Atendimento transferido para ${agentName} com sucesso!`);
+        window.dispatchEvent(
+          new CustomEvent("myde_chat_transferred", {
+            detail: { conversationId, agentId, agentName }
+          })
+        );
+      } catch (error) {
+        console.error(error);
+      }
+    }
   };
 
   const query = getMacroQuery(draft);
@@ -444,10 +467,13 @@ export function ChatArea({ conversationId }: { conversationId: string }) {
 
   return (
     <div className="flex-1 flex flex-col h-full relative" style={{ backgroundColor: chatBg }}>
-      {showEmojiPicker && (
+      {(showEmojiPicker || showActionsMenu) && (
         <div
           className="fixed inset-0 z-30 cursor-default"
-          onClick={() => setShowEmojiPicker(false)}
+          onClick={() => {
+            setShowEmojiPicker(false);
+            setShowActionsMenu(false);
+          }}
         />
       )}
 
@@ -469,15 +495,51 @@ export function ChatArea({ conversationId }: { conversationId: string }) {
           </div>
         </div>
 
-        <button
-          onClick={() => setShowSearch(!showSearch)}
-          className={`p-2 rounded-xl text-neutral-400 hover:bg-neutral-100 hover:text-neutral-600 transition-all cursor-pointer ${
-            showSearch ? "bg-neutral-100 text-neutral-600 ring-1 ring-neutral-200" : ""
-          }`}
-          title="Buscar mensagens"
-        >
-          <Search className="w-5 h-5" />
-        </button>
+        <div className="flex items-center gap-2 shrink-0">
+          <button
+            onClick={() => setShowSearch(!showSearch)}
+            className={`p-2 rounded-xl text-neutral-400 hover:bg-neutral-100 hover:text-neutral-600 transition-all cursor-pointer ${
+              showSearch ? "bg-neutral-100 text-neutral-600 ring-1 ring-neutral-200" : ""
+            }`}
+            title="Buscar mensagens"
+          >
+            <Search className="w-5 h-5" />
+          </button>
+
+          <div className="relative">
+            <button
+              onClick={() => setShowActionsMenu(!showActionsMenu)}
+              className={`p-2 rounded-xl text-neutral-400 hover:bg-neutral-100 hover:text-neutral-600 transition-all cursor-pointer ${
+                showActionsMenu ? "bg-neutral-100 text-neutral-600 ring-1 ring-neutral-200" : ""
+              }`}
+              title="Opções do Chat"
+            >
+              <MoreVertical className="w-5 h-5" />
+            </button>
+            {showActionsMenu && (
+              <div className="absolute right-0 mt-1 w-56 bg-white border border-neutral-200 rounded-xl shadow-xl z-50 p-1 flex flex-col gap-0.5 animate-in fade-in slide-in-from-top-2 duration-150">
+                <div className="relative w-full text-left px-3 py-2 rounded-lg text-xs font-semibold text-neutral-700 hover:bg-neutral-50 transition-colors flex items-center gap-2 cursor-pointer">
+                  <UserPlus className="w-4 h-4 text-neutral-400" />
+                  <span>Transferir Atendimento</span>
+                  <select
+                    value=""
+                    onChange={(e) => {
+                      setShowActionsMenu(false);
+                      handleTransferChat(e.target.value);
+                    }}
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                  >
+                    <option value="" disabled>Transferir para...</option>
+                    <option value="agent-2">Bruno Lima (N2)</option>
+                    <option value="agent-3">Carla Souza (Financeiro)</option>
+                    <option value="agent-4">Diego Rodrigues (Vendas)</option>
+                    <option value="agent-5">Mariana Costa (N1)</option>
+                  </select>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
 
       {showSearch && (

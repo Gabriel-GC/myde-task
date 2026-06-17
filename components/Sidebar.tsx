@@ -105,6 +105,18 @@ export function Sidebar({ activeId, onSelect }: SidebarProps) {
     return () => window.removeEventListener("myde_message_edited", handleEdit);
   }, []);
 
+  useEffect(() => {
+    const handleTransfer = (e: any) => {
+      const { conversationId } = e.detail;
+      toggleAction(conversationId, "delete");
+      if (activeId === conversationId) {
+        onSelect("");
+      }
+    };
+    window.addEventListener("myde_chat_transferred", handleTransfer as any);
+    return () => window.removeEventListener("myde_chat_transferred", handleTransfer as any);
+  }, [activeId, onSelect, toggleAction]);
+
   const handleAddMacro = (e: React.FormEvent) => {
     e.preventDefault();
     const cleanShortcut = newShortcut.trim().toLowerCase().replace(/[^a-z0-9]/g, "");
