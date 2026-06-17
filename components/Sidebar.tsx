@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useConversations, useMe } from "@/hooks/useApi";
 import { useChatPreferences } from "@/hooks/useChatPreferences";
 import { Conversation } from "@/lib/api";
-import { MessageSquare, Search, X, Pin, Camera, Paperclip, MoreVertical, Archive, ArchiveRestore, Trash2, Settings, Menu } from "lucide-react";
+import { MessageSquare, Search, X, Pin, Camera, Paperclip, MoreVertical, Archive, ArchiveRestore, Trash2, Settings, Menu, BellOff, Ban } from "lucide-react";
 
 interface SidebarProps {
   activeId: string | null;
@@ -49,6 +49,10 @@ function EmptyState({ showArchived }: { showArchived: boolean }) {
 }
 
 export function Sidebar({ activeId, onSelect }: SidebarProps) {
+  const showToast = (message: string, type: "success" | "error" | "info" = "info") => {
+    window.dispatchEvent(new CustomEvent("myde_toast", { detail: { message, type } }));
+  };
+
   const { data: conversations, isLoading } = useConversations();
   const { deletedIds, pinnedIds, archivedIds, toggleAction, resetPreferences } =
     useChatPreferences();
@@ -100,9 +104,13 @@ export function Sidebar({ activeId, onSelect }: SidebarProps) {
   const [editTrigger, setEditTrigger] = useState(0);
 
   useEffect(() => {
-    const handleEdit = () => setEditTrigger((prev) => prev + 1);
-    window.addEventListener("myde_message_edited", handleEdit);
-    return () => window.removeEventListener("myde_message_edited", handleEdit);
+    const handleUpdate = () => setEditTrigger((prev) => prev + 1);
+    window.addEventListener("myde_message_edited", handleUpdate);
+    window.addEventListener("myde_settings_changed", handleUpdate);
+    return () => {
+      window.removeEventListener("myde_message_edited", handleUpdate);
+      window.removeEventListener("myde_settings_changed", handleUpdate);
+    };
   }, []);
 
   useEffect(() => {
@@ -124,7 +132,7 @@ export function Sidebar({ activeId, onSelect }: SidebarProps) {
     if (!cleanShortcut || !cleanText) return;
 
     if (macros.some(m => m.shortcut === cleanShortcut)) {
-      alert("Já existe um atalho com este nome.");
+      showToast("Já existe um atalho com este nome.", "error");
       return;
     }
 
@@ -438,6 +446,14 @@ export function Sidebar({ activeId, onSelect }: SidebarProps) {
                       </h3>
 
                       <div className="flex items-center gap-1.5 shrink-0">
+                        {typeof window !== "undefined" && localStorage.getItem(`myde_blocked_${chat.id}`) === "true" && (
+                          <span
+                            className="text-red-500"
+                            title="Contato Bloqueado"
+                          >
+                            <Ban className="w-3.5 h-3.5" />
+                          </span>
+                        )}
                         {isPinned && (
                           <span
                             className="text-blue-500"
@@ -777,8 +793,8 @@ export function Sidebar({ activeId, onSelect }: SidebarProps) {
                     onClick={() => {
                       if (window.confirm("Deseja mesmo restaurar todos os chats arquivados, fixados e ocultados?")) {
                         resetPreferences();
-                        alert("Todos os chats foram restaurados com sucesso!");
-                        window.location.reload();
+                        showToast("Todos os chats foram restaurados com sucesso!", "success");
+                        setTimeout(() => window.location.reload(), 1000);
                       }
                     }}
                     className="flex-1 py-2 bg-neutral-100 hover:bg-neutral-200 text-neutral-700 text-xs font-bold rounded-lg transition-all active:scale-95 cursor-pointer text-center"
@@ -789,8 +805,8 @@ export function Sidebar({ activeId, onSelect }: SidebarProps) {
                     onClick={() => {
                       if (window.confirm("Deseja limpar todas as configurações (macros, preferências, etc.)? Isso restaurará os padrões.")) {
                         localStorage.clear();
-                        alert("Todas as configurações foram limpas!");
-                        window.location.reload();
+                        showToast("Todas as configurações foram limpas!", "success");
+                        setTimeout(() => window.location.reload(), 1000);
                       }
                     }}
                     className="flex-1 py-2 bg-red-50 hover:bg-red-100 text-red-600 text-xs font-bold rounded-lg transition-all active:scale-95 cursor-pointer text-center"
