@@ -84,7 +84,7 @@ export function ChatInputArea({
       textarea.style.height = `${Math.max(36, Math.min(sh, maxHeight))}px`;
       setIsMultiLine(sh > 40 || draft.includes("\n"));
       if (isMobile && draft.trim().length > 0 && sh > 72) {
-        setTextareaRows(3);
+        setTextareaRows(4);
       } else {
         setTextareaRows(1);
       }
@@ -266,8 +266,8 @@ export function ChatInputArea({
 
         <form
           onSubmit={handleSend}
-          className={`w-full flex flex-col md:flex-row md:items-end md:gap-2 bg-neutral-50/80 border border-neutral-200/60 p-2 transition-all duration-300 focus-within:bg-white focus-within:border-blue-400/50 focus-within:ring-2 focus-within:ring-blue-500/10 ${
-            isMultiLine ? "rounded-2xl" : "rounded-3xl md:rounded-full"
+          className={`w-full flex flex-col md:flex-row md:items-end md:gap-2 bg-neutral-50/80 border border-neutral-200/60 p-3 transition-all duration-300 focus-within:bg-white focus-within:border-blue-400/50 focus-within:ring-2 focus-within:ring-blue-500/10 ${
+            isMultiLine ? "rounded-2xl" : "rounded-2xl md:rounded-full"
           }`}
         >
           <div className="hidden md:flex items-center gap-1.5 pb-0.5">
