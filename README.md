@@ -1,10 +1,12 @@
-# Inbox de Atendimento WhatsApp com IA — Myde Frontend
+<img width="1672" height="941" alt="mockup-myde-task" src="https://github.com/user-attachments/assets/af0030af-5708-4449-afe8-813fbc494447" />imagem ilustrativa
 
-Bem-vindo ao painel de atendimento WhatsApp integrado com assistência de Inteligência Artificial. Esta aplicação foi desenvolvida em Next.js (App Router) e TypeScript, consumindo uma API REST dedicada.
+# Inbox de Atendimento Chat com IA — Myde Frontend
+### Link do projeto em produção: https://myde-task.netlify.app/
+Esta aplicação foi desenvolvida em Next.js (App Router) e TypeScript, consumindo uma API REST dedicada.
 
 ---
 
-## 🚀 Como Iniciar o Projeto
+## Como Iniciar o Projeto
 
 Siga as etapas abaixo para configurar e rodar a aplicação localmente:
 
@@ -32,17 +34,17 @@ npm run build
 
 ---
 
-## 📐 Decisões de Arquitetura e Tecnologia
+## Decisões de Arquitetura e Tecnologia
 
-Para atender e superar os critérios de avaliação técnica do desafio da **Myde**, a seguinte arquitetura foi implementada:
+Para atender os critérios de avaliação técnica do desafio da **Myde**, a seguinte arquitetura foi implementada:
 
 ### 1. Separação RSC vs Client Component (Next.js App Router)
-Para obter uma melhor performance e indexação (SEO), dividimos a aplicação:
-*   **Server Component (`app/page.tsx`)**: Responsável por processar a página no servidor, injetar os metadados de SEO estáticos/dinâmicos (OpenGraph, Twitter Cards) e prover um fallback de carregamento assíncrono via `<Suspense>`.
+Para obter uma melhor performance e indexação (SEO), a aplicação é dividida em:
+*   **Server Component (`app/page.tsx`)**: Responsável por processar a página no servidor, injetar os metadados de SEO estáticos/dinâmicos e prover um fallback de carregamento assíncrono via `<Suspense>`.
 *   **Client Component (`app/dashboard-view.tsx`)**: Isola os hooks de consulta do cliente (`useSearchParams`), o roteador do Next.js e o container de notificações temporárias (Toasts), reduzindo a carga inicial de processamento JavaScript.
 
 ### 2. Componentização Modular e Clean Code
-Extraímos os dois componentes monolíticos originais (`Sidebar` e `ChatArea`) em pequenos subcomponentes focados na pasta `components/sidebar/` e `components/chat/`. Nenhum arquivo de componente ultrapassa limites de legibilidade, e todos os comentários desnecessários foram removidos, tornando a lógica autoexplicativa.
+Temos dois compontentes base (`Sidebar` e `ChatArea`) que "fragmentamos" em pequenos subcomponentes focados na pasta `components/sidebar/` e `components/chat/`. Nenhum arquivo de componente ultrapassa limites de legibilidade tendo a lógica o maximo autoexplicativa.
 
 ### 3. Sincronização de Dados com React Query
 Utilizamos a biblioteca `@tanstack/react-query` centralizada em hooks customizados (`hooks/useApi.ts`):
@@ -51,9 +53,9 @@ Utilizamos a biblioteca `@tanstack/react-query` centralizada em hooks customizad
 
 ---
 
-## 📈 Diferenciais e Funcionalidades Extras
+## Diferenciais e Funcionalidades Extras
 
-Focando no critério de **Capricho & Detalhes (10%)**, adicionamos recursos que elevam o MVP para um produto final de mercado:
+Rrecursos que elevam o MVP para um produto final de mercado:
 
 *   **Autocomplete de Macros (`/`)**: Digitar uma barra `/` na caixa de texto abre um popover com respostas rápidas configuradas. É possível navegar entre elas pelas setas do teclado (`cima`/`baixo`) e inseri-las apertando `Enter`.
 *   **Configuração de Atalhos**: Na aba do Perfil, o atendente pode criar, listar e remover suas próprias macros rápidas de texto, salvas localmente.
@@ -64,9 +66,10 @@ Focando no critério de **Capricho & Detalhes (10%)**, adicionamos recursos que 
 *   **Acessibilidade (A11y)**: Injeção de marcações ARIA (`role="tablist"`, `role="tab"`, `aria-selected`, `aria-live="polite"`, `role="status"`) para leitores de tela.
 
 ---
+<details>
+<summary> Veja a grade de componentes </summary>
 
-## 🏗️ Grade de Componentes
-
+## Grade de Componentes 
 Abaixo está listada a responsabilidade resumida de cada componente na nova estrutura modular:
 
 | Componente | Caminho do Arquivo | Função Principal |
@@ -88,14 +91,7 @@ Abaixo está listada a responsabilidade resumida de cada componente na nova estr
 | **ChatBanners** | `components/chat/ChatBanners.tsx` | Banners substitutos do input de texto para chats Bloqueados, Sem Atribuição ou Finalizados. |
 | **TransferModal** | `components/chat/TransferModal.tsx` | Modal com lista de atendentes ativos para transferência ou liberação de chat. |
 | **ImagePreviewModal** | `components/chat/ImagePreviewModal.tsx` | Visualizador de imagens anexadas em tamanho cheio com overlay escuro. |
-
 ---
+</details>
 
-## 🔮 O que Faria Diferente com Mais Tempo
 
-Se tivéssemos mais prazo para o desenvolvimento, as seguintes melhorias seriam priorizadas:
-
-1.  **Sincronização em Tempo Real (WebSockets / Server-Sent Events)**: Substituir o Polling por uma conexão persistente bidirecional, reduzindo requisições HTTP e latência.
-2.  **Gerenciador de Estado Global (Zustand)**: Substituir os eventos customizados do window (`window.dispatchEvent`) por uma store do Zustand para gerenciar preferências e macros de forma mais limpa.
-3.  **Testes Automatizados**: Implementar testes unitários e de integração com Jest/React Testing Library, e testes ponta-a-ponta (E2E) com Playwright.
-4.  **Acessibilidade Teclado Completa**: Implementar focos controlados (focus trap) e gatilhos de escape em todos os menus dropdown e modais da aplicação.
