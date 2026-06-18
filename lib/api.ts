@@ -13,9 +13,10 @@ import axios from "axios";
  */
 
 export const api = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000",
+  baseURL: process.env.NEXT_PUBLIC_API_URL ?? "https://8tymn68hp9.execute-api.us-east-1.amazonaws.com",
   timeout: 20_000,
 });
+
 
 // ─── Tipos ────────────────────────────────────────────────
 export interface Conversation {

@@ -3,11 +3,11 @@ import DashboardView from "./dashboard-view";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Painel de Atendimento WhatsApp - Myde",
+  title: "Painel de Atendimento - Myde",
   description:
     "Gerencie seus atendimentos de WhatsApp integrados com Inteligência Artificial. Respostas automatizadas, macros rápidas, transferência de chats e painel otimizado.",
   openGraph: {
-    title: "Painel de Atendimento WhatsApp - Myde",
+    title: "Painel de Atendimento - Myde",
     description:
       "Gerencie seus atendimentos de WhatsApp integrados com Inteligência Artificial. Respostas automatizadas, macros rápidas, transferência de chats e painel otimizado.",
     type: "website",
@@ -16,7 +16,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Painel de Atendimento WhatsApp - Myde",
+    title: "Painel de Atendimento - Myde",
     description:
       "Gerencie seus atendimentos de WhatsApp integrados com Inteligência Artificial. Respostas automatizadas, macros rápidas, transferência de chats e painel otimizado.",
   },

@@ -1,4 +1,4 @@
-// Dados semeados do inbox de atendimento WhatsApp (empresa fictícia "NeoFibra").
+// Dados semeados do inbox de atendimento (empresa fictícia "NeoFibra").
 // Usados tanto pelo store em memória (local) quanto para popular o DynamoDB (hospedado).
 
 export const TENANT = "default";
