@@ -94,4 +94,75 @@ Abaixo está listada a responsabilidade resumida de cada componente na nova estr
 ---
 </details>
 
+## O que Faria com Mais Tempo
+
+As seguintes melhorias seriam priorizadas:
+
+### Chat com Áudio
+
+**O que fazer**
+Permitir a gravação e reprodução de mensagens de áudio utilizando um player customizado.
+
+**Como fazer**
+- Adicionar um botão de microfone em `ChatInputArea.tsx`.
+- Utilizar a API `MediaRecorder` para capturar o áudio.
+- Converter o áudio para Base64 antes do envio.
+- Em `MessageBubble.tsx`, detectar anexos de áudio e renderizar um player personalizado para reprodução.
+
+---
+
+### Notas Internas
+
+**O que fazer**
+Criar anotações privadas dentro do chat, visíveis apenas para atendentes.
+
+**Como fazer**
+- Adicionar um botão para alternar entre mensagem comum e nota interna em `ChatInputArea.tsx`.
+- Enviar a mensagem com `type: "internal_note"`.
+- Em `MessageBubble.tsx`, identificar mensagens desse tipo e renderizá-las.
+
+---
+
+### Resumo com IA
+
+**O que fazer**
+Gerar e exibir automaticamente um resumo da conversa ativa.
+
+**Como fazer**
+- Adicionar um botão de resumo em `ChatHeader.tsx`.
+- Ao clicar, enviar o histórico da conversa para um endpoint através de `useApi.ts`.
+- Exibir o resumo retornado em uma gaveta lateral retrátil dentro de `ChatArea.tsx`.
+
+---
+
+### Mensagem de Ausência
+
+**O que fazer**
+Enviar respostas automáticas quando o atendente estiver ausente ou fora do horário comercial.
+
+**Como fazer**
+- Adicionar configurações de status e horário em `ProfileTab.tsx`.
+- Persistir as preferências utilizando `localStorage`.
+- Em `ChatArea.tsx`, validar:
+  - Status atual do atendente;
+  - Horário configurado.
+- Quando uma nova mensagem for recebida, simular o envio automático da resposta previamente cadastrada.
+
+---
+
+### Gaveta de Mídias
+
+**O que fazer**
+Centralizar fotos, links e documentos compartilhados na conversa em uma aba lateral.
+
+**Como fazer**
+- Adicionar um botão de acesso à gaveta em `ChatHeader.tsx`.
+- Criar um painel lateral em `ChatArea.tsx`.
+- Percorrer as mensagens do chat e filtrar:
+  - Arquivos (`body.startsWith('{"type":"file"')`);
+  - Links (utilizando regex de URL).
+- Exibir os itens agrupados por categoria:
+  - Imagens;
+  - Documentos;
+  - Links.
 
